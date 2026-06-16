@@ -38,6 +38,23 @@ const ConstructorStandingsSchema = z.array(ConstructorStandingSchema)
 
 export type ConstructorStanding = z.infer<typeof ConstructorStandingSchema>
 
+const SessionSchema = z.object({
+  name: z.string(),
+  start: z.string(),
+})
+
+const RaceWeekendDetailSchema = z.object({
+  season: z.number(),
+  round: z.number(),
+  raceName: z.string(),
+  circuitName: z.string(),
+  country: z.string(),
+  sessions: z.array(SessionSchema),
+})
+
+export type Session = z.infer<typeof SessionSchema>
+export type RaceWeekendDetail = z.infer<typeof RaceWeekendDetailSchema>
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined
 
 // Mirrors backend's schedule cache TTL — no point polling more often than
@@ -90,6 +107,15 @@ export function useConstructorStandings() {
     queryKey: queryKeys.standings.constructors,
     queryFn: ({ signal }) => fetchJson('/api/standings/constructors', ConstructorStandingsSchema, signal),
     staleTime: STANDINGS_STALE_TIME_MS,
+    retry: false,
+  })
+}
+
+export function useRaceDetail(round: number) {
+  return useQuery({
+    queryKey: queryKeys.raceDetail(round),
+    queryFn: ({ signal }) => fetchJson(`/api/races/${round}`, RaceWeekendDetailSchema, signal),
+    staleTime: RACE_SCHEDULE_STALE_TIME_MS,
     retry: false,
   })
 }

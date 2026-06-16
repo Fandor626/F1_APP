@@ -27,7 +27,12 @@ public class RacesControllerTests : IClassFixture<WebApplicationFactory<Program>
             new ErgastCircuitDto("circuit", "Circuit Name", new ErgastLocationDto("City", "Country")),
             date,
             "13:00:00Z",
-            FirstPractice: null);
+            FirstPractice: null,
+            SecondPractice: null,
+            ThirdPractice: null,
+            Qualifying: null,
+            Sprint: null,
+            SprintQualifying: null);
 
     [Fact]
     public async Task Get_ReturnsScheduleSortedChronologicallyAsCamelCaseJson()
@@ -75,5 +80,45 @@ public class RacesControllerTests : IClassFixture<WebApplicationFactory<Program>
 
         Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task GetDetail_ReturnsSessionsForMatchingRound()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08", "First Race") }));
+
+        var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddScoped<IErgastClient>(_ => ergastClient.Object)))
+            .CreateClient();
+
+        var response = await client.GetAsync("/api/races/1");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var detail = await response.Content.ReadFromJsonAsync<RaceWeekendDetail>();
+        Assert.NotNull(detail);
+        Assert.Equal("First Race", detail!.RaceName);
+        Assert.Equal(["Race"], detail.Sessions.Select(s => s.Name));
+    }
+
+    [Fact]
+    public async Task GetDetail_ReturnsNotFoundForUnknownRound()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08", "First Race") }));
+
+        var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddScoped<IErgastClient>(_ => ergastClient.Object)))
+            .CreateClient();
+
+        var response = await client.GetAsync("/api/races/999");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useConstructorStandings, useDriverStandings, type RaceWeekend } from '../../shared/api/ergast'
 import { CountryFlag } from '../../shared/components/CountryFlag'
 import { describeDaysUntil, formatDateRange, formatRaceTime } from '../../shared/utils/dateUtils'
@@ -39,9 +40,10 @@ export function RaceWeekendCard({ race, isNext = false }: RaceWeekendCardProps) 
   const nextRaceLabel = `Next race: ${race.raceName}, ${describeDaysUntil(new Date(race.raceStart), new Date())}`
 
   return (
-    <article
+    <Link
+      to={`/races/${race.round}`}
       data-testid="race-weekend-card"
-      className={`rounded-lg border bg-bg-card px-[22px] py-[18px] ${
+      className={`block rounded-lg border bg-bg-card px-[22px] py-[18px] no-underline hover:border-accent-editorial ${
         isNext ? 'border-accent-editorial' : 'border-border-soft'
       }`}
     >
@@ -78,6 +80,6 @@ export function RaceWeekendCard({ race, isNext = false }: RaceWeekendCardProps) 
           />
         </div>
       )}
-    </article>
+    </Link>
   )
 }

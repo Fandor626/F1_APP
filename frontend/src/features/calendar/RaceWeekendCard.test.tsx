@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { RaceWeekendCard } from './RaceWeekendCard'
 import type { RaceWeekend } from '../../shared/api/ergast'
@@ -19,7 +20,9 @@ function renderCard(isNext = false) {
   const queryClient = new QueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      <RaceWeekendCard race={race} isNext={isNext} />
+      <MemoryRouter>
+        <RaceWeekendCard race={race} isNext={isNext} />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -31,6 +34,12 @@ describe('RaceWeekendCard', () => {
     expect(screen.getByRole('heading', { name: 'Italian Grand Prix' })).toBeInTheDocument()
     expect(screen.getByText('Autodromo Nazionale di Monza')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Italy flag' })).toBeInTheDocument()
+  })
+
+  it('links the whole card to its detail view', () => {
+    renderCard()
+
+    expect(screen.getByTestId('race-weekend-card')).toHaveAttribute('href', '/races/14')
   })
 
   it('does not show the next-race badge by default', () => {

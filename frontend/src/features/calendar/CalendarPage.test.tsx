@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HttpResponse, http } from 'msw'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { CalendarPage } from './CalendarPage'
 import { server } from '../../shared/test/server'
@@ -12,7 +13,9 @@ function renderPage() {
   const queryClient = new QueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      <CalendarPage />
+      <MemoryRouter>
+        <CalendarPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }

@@ -4,10 +4,22 @@ const RACE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
 })
 
+const SESSION_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 export function formatRaceTime(iso: string): string {
   return RACE_TIME_FORMATTER.format(new Date(iso))
+}
+
+export function formatSessionTime(iso: string): string {
+  return SESSION_TIME_FORMATTER.format(new Date(iso))
 }
 
 function startOfDay(date: Date): Date {
