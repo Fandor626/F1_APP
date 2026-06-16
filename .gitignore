@@ -1,0 +1,28 @@
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# .NET / backend
+bin/
+obj/
+
+# Environment & secrets
+.env.local
+appsettings.Development.json
+
+# Local tool settings (per-developer, not shared)
+.claude/settings.local.json
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.user
+
+# Logs
+*.log
+npm-debug.log*

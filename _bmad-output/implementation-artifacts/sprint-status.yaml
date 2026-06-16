@@ -43,7 +43,7 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   epic-1: in-progress
-  1-1-project-scaffolding-health-check: in-progress
+  1-1-project-scaffolding-health-check: review
   1-2-season-race-list: backlog
   1-3-race-weekend-card-championship-snippet: backlog
   1-4-race-weekend-detail-view-sessions: backlog
