@@ -7,4 +7,5 @@ public record RaceWeekendSummary(
     string CircuitName,
     string Locality,
     string Country,
+    DateTimeOffset WeekendStart,
     DateTimeOffset RaceStart);

@@ -26,7 +26,8 @@ public class RacesControllerTests : IClassFixture<WebApplicationFactory<Program>
             raceName,
             new ErgastCircuitDto("circuit", "Circuit Name", new ErgastLocationDto("City", "Country")),
             date,
-            "13:00:00Z");
+            "13:00:00Z",
+            FirstPractice: null);
 
     [Fact]
     public async Task Get_ReturnsScheduleSortedChronologicallyAsCamelCaseJson()

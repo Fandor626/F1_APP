@@ -9,6 +9,7 @@ const RaceWeekendSchema = z.object({
   circuitName: z.string(),
   locality: z.string(),
   country: z.string(),
+  weekendStart: z.string(),
   raceStart: z.string(),
 })
 
@@ -16,37 +17,79 @@ const RaceScheduleSchema = z.array(RaceWeekendSchema)
 
 export type RaceWeekend = z.infer<typeof RaceWeekendSchema>
 
+const DriverStandingSchema = z.object({
+  position: z.number(),
+  driverName: z.string(),
+  constructorName: z.string(),
+  points: z.number(),
+})
+
+const DriverStandingsSchema = z.array(DriverStandingSchema)
+
+export type DriverStanding = z.infer<typeof DriverStandingSchema>
+
+const ConstructorStandingSchema = z.object({
+  position: z.number(),
+  constructorName: z.string(),
+  points: z.number(),
+})
+
+const ConstructorStandingsSchema = z.array(ConstructorStandingSchema)
+
+export type ConstructorStanding = z.infer<typeof ConstructorStandingSchema>
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined
 
-// Mirrors backend's 24h schedule cache TTL — no point polling more often
-// than the data can actually change.
+// Mirrors backend's schedule cache TTL — no point polling more often than
+// the data can actually change.
 const RACE_SCHEDULE_STALE_TIME_MS = 1000 * 60 * 60
+
+// Mirrors backend's standings cache TTL (1h).
+const STANDINGS_STALE_TIME_MS = 1000 * 60 * 60
 
 // A hung connection (no response, no error) must not leave the page stuck
 // on a loading state forever — see deferred-work.md from Story 1.1.
 const REQUEST_TIMEOUT_MS = 10_000
 
-async function fetchRaceSchedule(querySignal: AbortSignal): Promise<RaceWeekend[]> {
+async function fetchJson<T>(path: string, schema: z.ZodType<T>, querySignal: AbortSignal): Promise<T> {
   if (!API_BASE_URL) {
     throw new Error('VITE_API_BASE_URL is not set — copy .env.example to .env.local')
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/races`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     signal: AbortSignal.any([querySignal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
   })
 
   if (!response.ok) {
-    throw new Error(`Race schedule request failed: ${response.status}`)
+    throw new Error(`Request to ${path} failed: ${response.status}`)
   }
 
-  return RaceScheduleSchema.parse(await response.json())
+  return schema.parse(await response.json())
 }
 
 export function useRaceSchedule() {
   return useQuery({
     queryKey: queryKeys.races,
-    queryFn: ({ signal }) => fetchRaceSchedule(signal),
+    queryFn: ({ signal }) => fetchJson('/api/races', RaceScheduleSchema, signal),
     staleTime: RACE_SCHEDULE_STALE_TIME_MS,
+    retry: false,
+  })
+}
+
+export function useDriverStandings() {
+  return useQuery({
+    queryKey: queryKeys.standings.drivers,
+    queryFn: ({ signal }) => fetchJson('/api/standings/drivers', DriverStandingsSchema, signal),
+    staleTime: STANDINGS_STALE_TIME_MS,
+    retry: false,
+  })
+}
+
+export function useConstructorStandings() {
+  return useQuery({
+    queryKey: queryKeys.standings.constructors,
+    queryFn: ({ signal }) => fetchJson('/api/standings/constructors', ConstructorStandingsSchema, signal),
+    staleTime: STANDINGS_STALE_TIME_MS,
     retry: false,
   })
 }

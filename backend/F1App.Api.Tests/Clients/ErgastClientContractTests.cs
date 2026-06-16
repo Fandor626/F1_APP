@@ -71,5 +71,89 @@ public class ErgastClientContractTests : IDisposable
             () => client.GetCurrentSeasonScheduleAsync(CancellationToken.None));
     }
 
+    [Fact]
+    public async Task GetCurrentDriverStandingsAsync_ParsesTopLevelStandingsList()
+    {
+        _server
+            .Given(Request.Create().WithPath("/current/driverStandings.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    StandingsTable = new
+                    {
+                        StandingsLists = new[]
+                        {
+                            new
+                            {
+                                DriverStandings = new[]
+                                {
+                                    new
+                                    {
+                                        position = "1",
+                                        points = "156",
+                                        wins = "5",
+                                        Driver = new { driverId = "antonelli", givenName = "Andrea Kimi", familyName = "Antonelli" },
+                                        Constructors = new[] { new { constructorId = "mercedes", name = "Mercedes" } },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var standings = await client.GetCurrentDriverStandingsAsync(CancellationToken.None);
+
+        var standing = Assert.Single(standings);
+        Assert.Equal("Antonelli", standing.Driver.FamilyName);
+        Assert.Equal("Mercedes", standing.Constructors[0].Name);
+        Assert.Equal("156", standing.Points);
+    }
+
+    [Fact]
+    public async Task GetCurrentConstructorStandingsAsync_ParsesTopLevelStandingsList()
+    {
+        _server
+            .Given(Request.Create().WithPath("/current/constructorStandings.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    StandingsTable = new
+                    {
+                        StandingsLists = new[]
+                        {
+                            new
+                            {
+                                ConstructorStandings = new[]
+                                {
+                                    new
+                                    {
+                                        position = "1",
+                                        points = "262",
+                                        wins = "6",
+                                        Constructor = new { constructorId = "mercedes", name = "Mercedes" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var standings = await client.GetCurrentConstructorStandingsAsync(CancellationToken.None);
+
+        var standing = Assert.Single(standings);
+        Assert.Equal("Mercedes", standing.Constructor.Name);
+        Assert.Equal("262", standing.Points);
+    }
+
     public void Dispose() => _server.Stop();
 }

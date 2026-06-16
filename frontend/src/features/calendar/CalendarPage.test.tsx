@@ -30,6 +30,7 @@ const pastRace: RaceWeekend = {
   circuitName: 'Past Circuit',
   locality: 'City A',
   country: 'Country A',
+  weekendStart: new Date(now - 32 * DAY_MS).toISOString(),
   raceStart: new Date(now - 30 * DAY_MS).toISOString(),
 }
 
@@ -40,6 +41,7 @@ const nextRace: RaceWeekend = {
   circuitName: 'Next Circuit',
   locality: 'City B',
   country: 'Country B',
+  weekendStart: new Date(now + 1 * DAY_MS).toISOString(),
   raceStart: new Date(now + 3 * DAY_MS).toISOString(),
 }
 
@@ -50,6 +52,7 @@ const futureRace: RaceWeekend = {
   circuitName: 'Future Circuit',
   locality: 'City C',
   country: 'Country C',
+  weekendStart: new Date(now + 58 * DAY_MS).toISOString(),
   raceStart: new Date(now + 60 * DAY_MS).toISOString(),
 }
 

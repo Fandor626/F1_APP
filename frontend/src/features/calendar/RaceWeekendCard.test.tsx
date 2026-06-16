@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { describe, expect, it } from 'vitest'
 import { RaceWeekendCard } from './RaceWeekendCard'
 import type { RaceWeekend } from '../../shared/api/ergast'
 
@@ -10,32 +11,47 @@ const race: RaceWeekend = {
   circuitName: 'Autodromo Nazionale di Monza',
   locality: 'Monza',
   country: 'Italy',
+  weekendStart: '2026-09-05T10:30:00+00:00',
   raceStart: '2026-09-07T13:00:00+00:00',
 }
 
-afterEach(() => {
-  vi.useRealTimers()
-})
+function renderCard(isNext = false) {
+  const queryClient = new QueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <RaceWeekendCard race={race} isNext={isNext} />
+    </QueryClientProvider>,
+  )
+}
 
 describe('RaceWeekendCard', () => {
-  it('renders the race name and formatted start time', () => {
-    render(<RaceWeekendCard race={race} />)
+  it('renders the race name, circuit name, and country flag', () => {
+    renderCard()
 
     expect(screen.getByRole('heading', { name: 'Italian Grand Prix' })).toBeInTheDocument()
+    expect(screen.getByText('Autodromo Nazionale di Monza')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Italy flag' })).toBeInTheDocument()
   })
 
   it('does not show the next-race badge by default', () => {
-    render(<RaceWeekendCard race={race} />)
+    renderCard()
 
     expect(screen.queryByText(/Next race:/)).not.toBeInTheDocument()
   })
 
-  it('shows a next-race badge with a days-until countdown when pinned', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-09-04T00:00:00Z'))
+  it('shows a next-race badge naming the race when pinned', () => {
+    renderCard(true)
 
-    render(<RaceWeekendCard race={race} isNext />)
+    expect(screen.getByText(/^Next race: Italian Grand Prix, /)).toBeInTheDocument()
+  })
 
-    expect(screen.getByText('Next race: Italian Grand Prix, 3 days')).toBeInTheDocument()
+  it('shows the top-3 driver and constructor standings once loaded', async () => {
+    renderCard()
+
+    await waitFor(() => expect(screen.getByText('Norris')).toBeInTheDocument())
+    expect(screen.getByText("Drivers' Championship")).toBeInTheDocument()
+    expect(screen.getByText("Constructors' Championship")).toBeInTheDocument()
+    expect(screen.getByText('312 pts')).toBeInTheDocument()
+    expect(screen.getByText('McLaren')).toBeInTheDocument()
   })
 })

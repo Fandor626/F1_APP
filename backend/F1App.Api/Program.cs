@@ -37,6 +37,7 @@ builder.Services.AddHttpClient<IErgastClient, ErgastClient>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 builder.Services.AddScoped<RaceScheduleService>();
+builder.Services.AddScoped<StandingsService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

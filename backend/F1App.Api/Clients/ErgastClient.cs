@@ -12,4 +12,24 @@ public class ErgastClient(HttpClient httpClient) : IErgastClient
 
         return response.MRData.RaceTable;
     }
+
+    public async Task<IReadOnlyList<ErgastDriverStandingDto>> GetCurrentDriverStandingsAsync(CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastDriverStandingsResponseDto>("current/driverStandings.json", cancellationToken)
+            ?? throw new InvalidOperationException("Ergast returned an empty response for current driver standings.");
+
+        return response.MRData.StandingsTable.StandingsLists.Count == 0
+            ? []
+            : response.MRData.StandingsTable.StandingsLists[0].DriverStandings;
+    }
+
+    public async Task<IReadOnlyList<ErgastConstructorStandingDto>> GetCurrentConstructorStandingsAsync(CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastConstructorStandingsResponseDto>("current/constructorStandings.json", cancellationToken)
+            ?? throw new InvalidOperationException("Ergast returned an empty response for current constructor standings.");
+
+        return response.MRData.StandingsTable.StandingsLists.Count == 0
+            ? []
+            : response.MRData.StandingsTable.StandingsLists[0].ConstructorStandings;
+    }
 }

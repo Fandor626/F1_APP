@@ -18,6 +18,11 @@ public record ErgastRaceDto(
     [property: JsonPropertyName("raceName")] string RaceName,
     [property: JsonPropertyName("Circuit")] ErgastCircuitDto Circuit,
     [property: JsonPropertyName("date")] string Date,
+    [property: JsonPropertyName("time")] string? Time,
+    [property: JsonPropertyName("FirstPractice")] ErgastSessionDto? FirstPractice);
+
+public record ErgastSessionDto(
+    [property: JsonPropertyName("date")] string Date,
     [property: JsonPropertyName("time")] string? Time);
 
 public record ErgastCircuitDto(

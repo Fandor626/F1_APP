@@ -29,15 +29,23 @@ public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache)
         return schedule;
     }
 
-    private static RaceWeekendSummary ToSummary(ErgastRaceDto race) =>
-        new(
+    private static RaceWeekendSummary ToSummary(ErgastRaceDto race)
+    {
+        var raceStart = CombineDateAndTime(race.Date, race.Time);
+        var weekendStart = race.FirstPractice is null
+            ? raceStart
+            : CombineDateAndTime(race.FirstPractice.Date, race.FirstPractice.Time);
+
+        return new(
             int.Parse(race.Season, CultureInfo.InvariantCulture),
             int.Parse(race.Round, CultureInfo.InvariantCulture),
             race.RaceName,
             race.Circuit.CircuitName,
             race.Circuit.Location.Locality,
             race.Circuit.Location.Country,
-            CombineDateAndTime(race.Date, race.Time));
+            weekendStart,
+            raceStart);
+    }
 
     private static DateTimeOffset CombineDateAndTime(string date, string? time) =>
         DateTimeOffset.Parse(
