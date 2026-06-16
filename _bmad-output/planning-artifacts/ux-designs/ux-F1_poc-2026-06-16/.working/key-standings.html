@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Standings — F1_poc</title>
+<style>
+/*
+  Illustrates:
+  - DESIGN.md Components.nav-topbar
+  - DESIGN.md Components.tab-toggle (Drivers/Constructors switch, bg-card-hover marks active tab)
+  - DESIGN.md Components.card (chart well uses bg-inset per Elevation & Depth section)
+  - DESIGN.md Typography (display/heading/body/label tokens), Colors (team accents as dots only)
+  - EXPERIENCE.md Information Architecture (Standings surface)
+  - EXPERIENCE.md Component Patterns row "Standings toggle" (instant switch, no reload/route change)
+  - EXPERIENCE.md Accessibility Floor ("Standings render as a real <table> element, not styled divs")
+  - EXPERIENCE.md State Patterns row "Season in progress" -> Season Wrapped section absent entirely (not shown here)
+*/
+:root{
+  --bg-app:#14171c;
+  --bg-card:#1b1f26;
+  --bg-card-hover:#20242c;
+  --bg-inset:#11141a;
+  --border-soft:#2a2f38;
+  --text-primary:#eef0f3;
+  --text-secondary:#9aa1ad;
+  --text-tertiary:#6b7280;
+  --text-dim:#4b5160;
+  --accent-editorial:#d8b65c;
+
+  --team-redbull:#2741a6;
+  --team-ferrari:#ef1a2d;
+  --team-mercedes:#1fd6c1;
+  --team-mclaren:#ff8a1e;
+
+  --radius-sm:6px;
+  --radius-md:12px;
+  --radius-lg:14px;
+  --radius-full:9999px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;background:var(--bg-app);}
+body{
+  font-family:"Avenir Next","Segoe UI",ui-sans-serif,system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--text-primary);
+}
+
+/* ---------- nav-topbar ---------- */
+.nav-topbar{
+  position:sticky;
+  top:0;
+  z-index:10;
+  height:56px;
+  background:var(--bg-card);
+  border-bottom:1px solid var(--border-soft);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 28px;
+}
+.nav-left{display:flex;align-items:center;gap:32px;}
+.nav-brand{font-size:15px;font-weight:700;letter-spacing:-0.01em;color:var(--text-primary);}
+.nav-brand span{color:var(--accent-editorial);}
+.nav-links{display:flex;align-items:center;gap:22px;list-style:none;margin:0;padding:0;}
+.nav-links a{
+  color:var(--text-secondary);
+  text-decoration:none;
+  font-size:13px;
+  font-weight:400;
+  padding:4px 2px;
+  border-bottom:1px solid transparent;
+}
+.nav-links a:hover{color:var(--text-primary);border-bottom-color:var(--accent-editorial);}
+.nav-links a.active{color:var(--text-primary);font-weight:600;}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.streak-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:var(--bg-inset);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-full);
+  padding:5px 12px;
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:0.04em;
+  color:var(--text-secondary);
+}
+.streak-badge b{color:var(--accent-editorial);font-weight:700;}
+.fancard-link{
+  font-size:13px;
+  color:var(--text-primary);
+  text-decoration:none;
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-md);
+  padding:6px 14px;
+}
+.fancard-link:hover{border-color:var(--accent-editorial);color:var(--accent-editorial);}
+
+/* ---------- page shell ---------- */
+.page{max-width:1100px;margin:0 auto;padding:32px 28px 64px;}
+h1.page-title{
+  font-size:26px;
+  font-weight:700;
+  line-height:1.2;
+  letter-spacing:-0.01em;
+  margin:0 0 4px;
+}
+.page-sub{font-size:13px;color:var(--text-secondary);margin:0 0 22px;}
+
+/* ---------- tab-toggle ---------- */
+.tab-toggle{
+  display:inline-flex;
+  background:var(--bg-card);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-md);
+  padding:3px;
+  margin-bottom:24px;
+}
+.tab-toggle button{
+  appearance:none;
+  border:none;
+  background:transparent;
+  color:var(--text-secondary);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:600;
+  padding:8px 20px;
+  border-radius:var(--radius-md);
+  cursor:pointer;
+}
+.tab-toggle button.active{
+  background:var(--bg-card-hover);
+  color:var(--text-primary);
+}
+
+/* ---------- card ---------- */
+.card{
+  background:var(--bg-card);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-lg);
+  padding:18px 22px;
+  margin-bottom:22px;
+}
+.card-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;}
+.card-title{font-size:15px;font-weight:700;letter-spacing:-0.01em;}
+.card-sub{font-size:12px;color:var(--text-tertiary);}
+
+/* ---------- standings table ---------- */
+table.standings-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+table.standings-table thead th{
+  text-align:left;
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  color:var(--text-tertiary);
+  padding:8px 10px;
+  border-bottom:1px solid var(--border-soft);
+}
+table.standings-table thead th.num{text-align:right;}
+table.standings-table tbody td{
+  padding:11px 10px;
+  border-bottom:1px solid var(--bg-card-hover);
+  color:var(--text-primary);
+}
+table.standings-table tbody tr:hover{background:var(--bg-card-hover);}
+table.standings-table tbody tr:last-child td{border-bottom:none;}
+table.standings-table td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--text-secondary);}
+table.standings-table td.pos{color:var(--text-tertiary);font-weight:600;width:28px;}
+.driver-cell{display:flex;align-items:center;gap:9px;}
+.team-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.driver-name{font-weight:600;color:var(--text-primary);text-decoration:none;}
+.driver-name:hover{text-decoration:underline;text-decoration-color:var(--accent-editorial);}
+.flag{margin-right:2px;}
+.constructor-name{color:var(--text-secondary);}
+
+/* ---------- chart well ---------- */
+.chart-legend{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--text-secondary);margin-bottom:10px;}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px;}
+.chart-legend i{width:14px;height:2px;border-radius:2px;display:inline-block;}
+.chart-box{
+  background:var(--bg-inset);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-md);
+  height:260px;
+  padding:8px;
+}
+.chart-axis-label{font-size:11px;color:var(--text-tertiary);margin-top:8px;display:flex;justify-content:space-between;}
+</style>
+</head>
+<body>
+
+<nav class="nav-topbar">
+  <div class="nav-left">
+    <div class="nav-brand">F1<span>_poc</span></div>
+    <ul class="nav-links">
+      <li><a href="#">Calendar</a></li>
+      <li><a href="#">Live Race</a></li>
+      <li><a href="#" class="active">Standings</a></li>
+      <li><a href="#">Profiles</a></li>
+      <li><a href="#">News Feed</a></li>
+    </ul>
+  </div>
+  <div class="nav-right">
+    <span class="streak-badge">Streak <b>7</b></span>
+    <a href="#" class="fancard-link">Fan Card</a>
+  </div>
+</nav>
+
+<div class="page">
+  <h1 class="page-title">Standings</h1>
+  <p class="page-sub">Season in progress — 16 of 24 races complete.</p>
+
+  <div class="tab-toggle">
+    <button class="active">Drivers</button>
+    <button>Constructors</button>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Drivers' Championship</div>
+      <div class="card-sub">After Belgian Grand Prix</div>
+    </div>
+    <table class="standings-table">
+      <thead>
+        <tr>
+          <th>Pos</th>
+          <th>Driver</th>
+          <th>Constructor</th>
+          <th class="num">Points</th>
+          <th class="num">Wins</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="pos">1</td>
+          <td><div class="driver-cell"><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="flag">🇬🇧</span><a href="#" class="driver-name">Lando Norris</a></div></td>
+          <td class="constructor-name">McLaren</td>
+          <td class="num">298</td>
+          <td class="num">7</td>
+        </tr>
+        <tr>
+          <td class="pos">2</td>
+          <td><div class="driver-cell"><span class="team-dot" style="background:var(--team-redbull)"></span><span class="flag">🇳🇱</span><a href="#" class="driver-name">Max Verstappen</a></div></td>
+          <td class="constructor-name">Red Bull Racing</td>
+          <td class="num">277</td>
+          <td class="num">5</td>
+        </tr>
+        <tr>
+          <td class="pos">3</td>
+          <td><div class="driver-cell"><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="flag">🇲🇨</span><a href="#" class="driver-name">Charles Leclerc</a></div></td>
+          <td class="constructor-name">Ferrari</td>
+          <td class="num">229</td>
+          <td class="num">2</td>
+        </tr>
+        <tr>
+          <td class="pos">4</td>
+          <td><div class="driver-cell"><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="flag">🇦🇺</span><a href="#" class="driver-name">Oscar Piastri</a></div></td>
+          <td class="constructor-name">McLaren</td>
+          <td class="num">214</td>
+          <td class="num">3</td>
+        </tr>
+        <tr>
+          <td class="pos">5</td>
+          <td><div class="driver-cell"><span class="team-dot" style="background:var(--team-mercedes)"></span><span class="flag">🇬🇧</span><a href="#" class="driver-name">George Russell</a></div></td>
+          <td class="constructor-name">Mercedes</td>
+          <td class="num">187</td>
+          <td class="num">1</td>
+        </tr>
+        <tr>
+          <td class="pos">6</td>
+          <td><div class="driver-cell"><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="flag">🇬🇧</span><a href="#" class="driver-name">Lewis Hamilton</a></div></td>
+          <td class="constructor-name">Ferrari</td>
+          <td class="num">163</td>
+          <td class="num">0</td>
+        </tr>
+        <tr>
+          <td class="pos">7</td>
+          <td><div class="driver-cell"><span class="team-dot" style="background:var(--team-mercedes)"></span><span class="flag">🇮🇹</span><a href="#" class="driver-name">Kimi Antonelli</a></div></td>
+          <td class="constructor-name">Mercedes</td>
+          <td class="num">121</td>
+          <td class="num">0</td>
+        </tr>
+        <tr>
+          <td class="pos">8</td>
+          <td><div class="driver-cell"><span class="team-dot" style="background:var(--team-redbull)"></span><span class="flag">🇲🇽</span><a href="#" class="driver-name">Sergio Pérez</a></div></td>
+          <td class="constructor-name">Red Bull Racing</td>
+          <td class="num">98</td>
+          <td class="num">0</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Championship Trajectory</div>
+      <div class="card-sub">Cumulative points by round</div>
+    </div>
+    <div class="chart-legend">
+      <span><i style="background:var(--team-mclaren)"></i>Norris</span>
+      <span><i style="background:var(--team-redbull)"></i>Verstappen</span>
+      <span><i style="background:var(--team-ferrari)"></i>Leclerc</span>
+      <span><i style="background:var(--team-mercedes)"></i>Russell</span>
+    </div>
+    <div class="chart-box">
+      <svg viewBox="0 0 800 240" width="100%" height="100%" preserveAspectRatio="none">
+        <line x1="0" y1="40" x2="800" y2="40" stroke="#20242c" stroke-width="1"/>
+        <line x1="0" y1="90" x2="800" y2="90" stroke="#20242c" stroke-width="1"/>
+        <line x1="0" y1="140" x2="800" y2="140" stroke="#20242c" stroke-width="1"/>
+        <line x1="0" y1="190" x2="800" y2="190" stroke="#20242c" stroke-width="1"/>
+        <polyline points="0,220 50,205 100,195 150,180 200,170 250,158 300,148 350,140 400,128 450,118 500,108 550,96 600,84 650,72 700,58 750,46 800,38"
+          fill="none" stroke="var(--team-mclaren)" stroke-width="2.5" stroke-linecap="round"/>
+        <polyline points="0,222 50,210 100,200 150,192 200,185 250,176 300,168 350,160 400,152 450,142 500,134 550,124 600,114 650,104 700,94 750,82 800,70"
+          fill="none" stroke="var(--team-redbull)" stroke-width="2.5" stroke-linecap="round"/>
+        <polyline points="0,224 50,216 100,210 150,205 200,200 250,196 300,190 350,186 400,180 450,176 500,170 550,164 600,158 650,150 700,144 750,138 800,130"
+          fill="none" stroke="var(--team-ferrari)" stroke-width="2.5" stroke-linecap="round"/>
+        <polyline points="0,225 50,220 100,216 150,212 200,208 250,204 300,200 350,196 400,192 450,188 500,182 550,178 600,172 650,168 700,162 750,156 800,150"
+          fill="none" stroke="var(--team-mercedes)" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="chart-axis-label"><span>Round 1</span><span>Round 8</span><span>Round 16 (current)</span></div>
+  </div>
+
+</div>
+
+</body>
+</html>

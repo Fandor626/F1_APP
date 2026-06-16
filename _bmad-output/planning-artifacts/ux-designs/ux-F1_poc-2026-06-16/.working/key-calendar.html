@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Race Calendar — F1_poc</title>
+<style>
+/*
+  Illustrates:
+  - DESIGN.md Components.nav-topbar (persistent top bar, bg-card, houses streak badge)
+  - DESIGN.md Components.weekend-card (extends card; pinned border = accent-editorial)
+  - DESIGN.md Components.card / inline-link / live-badge tokens
+  - DESIGN.md Colors, Typography, Layout & Spacing, Shapes, Elevation sections (flat, tonal-surface depth, rounded.lg cards)
+  - EXPERIENCE.md Information Architecture (Race Calendar = default landing page; top nav surfaces)
+  - EXPERIENCE.md Component Patterns row "Race Weekend card" (whole card clickable, next weekend pinned above scrollable past weekends)
+  - EXPERIENCE.md Voice and Tone (plain, fan-to-fan copy, no emoji/hype)
+*/
+:root{
+  --bg-app:#14171c;
+  --bg-card:#1b1f26;
+  --bg-card-hover:#20242c;
+  --bg-inset:#11141a;
+  --border-soft:#2a2f38;
+  --text-primary:#eef0f3;
+  --text-secondary:#9aa1ad;
+  --text-tertiary:#6b7280;
+  --text-dim:#4b5160;
+  --accent-editorial:#d8b65c;
+
+  --sector-purple:#b066ff;
+  --sector-green:#2ee686;
+  --sector-yellow:#f2cf4a;
+  --sector-white:#f4f6f8;
+
+  --tyre-soft:#ef4444;
+  --tyre-medium:#f2cf4a;
+  --tyre-hard:#f4f6f8;
+  --tyre-intermediate:#2ee686;
+  --tyre-wet:#4d8dff;
+
+  --team-redbull:#2741a6;
+  --team-ferrari:#ef1a2d;
+  --team-mercedes:#1fd6c1;
+  --team-mclaren:#ff8a1e;
+
+  --radius-sm:6px;
+  --radius-md:12px;
+  --radius-lg:14px;
+  --radius-full:9999px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;background:var(--bg-app);}
+body{
+  font-family:"Avenir Next","Segoe UI",ui-sans-serif,system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--text-primary);
+}
+
+/* ---------- nav-topbar ---------- */
+.nav-topbar{
+  position:sticky;
+  top:0;
+  z-index:10;
+  height:56px;
+  background:var(--bg-card);
+  border-bottom:1px solid var(--border-soft);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 28px;
+}
+.nav-left{display:flex;align-items:center;gap:32px;}
+.nav-brand{font-size:15px;font-weight:700;letter-spacing:-0.01em;color:var(--text-primary);}
+.nav-brand span{color:var(--accent-editorial);}
+.nav-links{display:flex;align-items:center;gap:22px;list-style:none;margin:0;padding:0;}
+.nav-links a{
+  color:var(--text-secondary);
+  text-decoration:none;
+  font-size:13px;
+  font-weight:400;
+  padding:4px 2px;
+  border-bottom:1px solid transparent;
+}
+.nav-links a:hover{color:var(--text-primary);border-bottom-color:var(--accent-editorial);}
+.nav-links a.active{color:var(--text-primary);font-weight:600;}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.streak-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:var(--bg-inset);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-full);
+  padding:5px 12px;
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:0.04em;
+  color:var(--text-secondary);
+}
+.streak-badge b{color:var(--accent-editorial);font-weight:700;}
+.fancard-link{
+  font-size:13px;
+  color:var(--text-primary);
+  text-decoration:none;
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-md);
+  padding:6px 14px;
+}
+.fancard-link:hover{border-color:var(--accent-editorial);color:var(--accent-editorial);}
+
+/* ---------- page shell ---------- */
+.page{max-width:1100px;margin:0 auto;padding:32px 28px 64px;}
+h1.page-title{
+  font-size:26px;
+  font-weight:700;
+  line-height:1.2;
+  letter-spacing:-0.01em;
+  margin:0 0 4px;
+}
+.page-sub{font-size:13px;color:var(--text-secondary);margin:0 0 28px;}
+
+.section-label{
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:0.04em;
+  color:var(--text-tertiary);
+  text-transform:uppercase;
+  margin:0 0 12px;
+}
+
+/* ---------- weekend-card (extends card) ---------- */
+.weekend-list{display:flex;flex-direction:column;gap:16px;margin-bottom:36px;}
+.weekend-card{
+  display:block;
+  background:var(--bg-card);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-lg);
+  padding:18px 22px;
+  text-decoration:none;
+  color:var(--text-primary);
+  cursor:pointer;
+}
+.weekend-card.pinned{
+  border:1px solid var(--accent-editorial);
+}
+.weekend-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
+}
+.weekend-circuit{display:flex;align-items:baseline;gap:10px;}
+.weekend-flag{font-size:20px;line-height:1;}
+.weekend-name{font-size:15px;font-weight:700;letter-spacing:-0.01em;}
+.weekend-country{font-size:12px;color:var(--text-tertiary);margin-left:4px;}
+.weekend-dates{text-align:right;font-size:12px;color:var(--text-secondary);line-height:1.5;}
+.weekend-dates .race-time{color:var(--text-primary);font-weight:600;font-size:13px;}
+
+.live-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid var(--accent-editorial);
+  color:var(--accent-editorial);
+  background:transparent;
+  border-radius:var(--radius-full);
+  padding:3px 11px;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.04em;
+}
+.live-badge .pulse-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--accent-editorial);
+  animation:pulse 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce){
+  .live-badge .pulse-dot{animation:none;}
+}
+@keyframes pulse{
+  0%,100%{opacity:1;}
+  50%{opacity:0.35;}
+}
+
+.weekend-standings{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  padding-top:14px;
+  border-top:1px solid var(--border-soft);
+}
+.standings-col-label{
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:0.04em;
+  color:var(--text-tertiary);
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+.mini-standing-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:4px 0;
+  font-size:13px;
+}
+.mini-standing-left{display:flex;align-items:center;gap:8px;}
+.mini-pos{color:var(--text-tertiary);font-size:12px;width:14px;}
+.team-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.mini-name{color:var(--text-primary);}
+.mini-pts{color:var(--text-secondary);font-variant-numeric:tabular-nums;font-size:12.5px;}
+
+.weekend-card.past{opacity:0.92;}
+.weekend-card.past .weekend-standings{opacity:0.85;}
+.past-label{font-size:11px;color:var(--text-tertiary);}
+</style>
+</head>
+<body>
+
+<nav class="nav-topbar">
+  <div class="nav-left">
+    <div class="nav-brand">F1<span>_poc</span></div>
+    <ul class="nav-links">
+      <li><a href="#" class="active">Calendar</a></li>
+      <li><a href="#">Live Race</a></li>
+      <li><a href="#">Standings</a></li>
+      <li><a href="#">Profiles</a></li>
+      <li><a href="#">News Feed</a></li>
+    </ul>
+  </div>
+  <div class="nav-right">
+    <span class="streak-badge">Streak <b>7</b></span>
+    <a href="#" class="fancard-link">Fan Card</a>
+  </div>
+</nav>
+
+<div class="page">
+  <h1 class="page-title">Race Calendar</h1>
+  <p class="page-sub">Season schedule. Next race pinned at the top.</p>
+
+  <div class="section-label">Next race</div>
+  <div class="weekend-list" style="margin-bottom:28px;">
+
+    <a class="weekend-card pinned">
+      <div class="weekend-head">
+        <div class="weekend-circuit">
+          <span class="weekend-flag">🇮🇹</span>
+          <span class="weekend-name">Italian Grand Prix</span>
+          <span class="weekend-country">Monza</span>
+        </div>
+        <div class="weekend-dates">
+          <span class="live-badge"><span class="pulse-dot"></span>Next race: 3 days</span><br>
+          <span style="margin-top:6px;display:inline-block;">5–7 Sep 2026</span><br>
+          <span class="race-time">Race: Sun 15:00 Track</span>
+        </div>
+      </div>
+      <div class="weekend-standings">
+        <div>
+          <div class="standings-col-label">Drivers' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">Norris</span></div>
+            <span class="mini-pts">312 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Verstappen</span></div>
+            <span class="mini-pts">289 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="mini-name">Leclerc</span></div>
+            <span class="mini-pts">241 pts</span>
+          </div>
+        </div>
+        <div>
+          <div class="standings-col-label">Constructors' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">McLaren</span></div>
+            <span class="mini-pts">567 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="mini-name">Ferrari</span></div>
+            <span class="mini-pts">438 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Red Bull Racing</span></div>
+            <span class="mini-pts">401 pts</span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="section-label">Past weekends</div>
+  <div class="weekend-list">
+
+    <a class="weekend-card past">
+      <div class="weekend-head">
+        <div class="weekend-circuit">
+          <span class="weekend-flag">🇧🇪</span>
+          <span class="weekend-name">Belgian Grand Prix</span>
+          <span class="weekend-country">Spa-Francorchamps</span>
+        </div>
+        <div class="weekend-dates">
+          <span class="past-label">Completed</span><br>
+          <span style="margin-top:6px;display:inline-block;">25–27 Jul 2026</span><br>
+          <span class="race-time">Race: Sun 15:00 Track</span>
+        </div>
+      </div>
+      <div class="weekend-standings">
+        <div>
+          <div class="standings-col-label">Drivers' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">Norris</span></div>
+            <span class="mini-pts">298 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Verstappen</span></div>
+            <span class="mini-pts">277 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="mini-name">Leclerc</span></div>
+            <span class="mini-pts">229 pts</span>
+          </div>
+        </div>
+        <div>
+          <div class="standings-col-label">Constructors' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">McLaren</span></div>
+            <span class="mini-pts">541 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="mini-name">Ferrari</span></div>
+            <span class="mini-pts">416 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Red Bull Racing</span></div>
+            <span class="mini-pts">385 pts</span>
+          </div>
+        </div>
+      </div>
+    </a>
+
+    <a class="weekend-card past">
+      <div class="weekend-head">
+        <div class="weekend-circuit">
+          <span class="weekend-flag">🇬🇧</span>
+          <span class="weekend-name">British Grand Prix</span>
+          <span class="weekend-country">Silverstone</span>
+        </div>
+        <div class="weekend-dates">
+          <span class="past-label">Completed</span><br>
+          <span style="margin-top:6px;display:inline-block;">4–6 Jul 2026</span><br>
+          <span class="race-time">Race: Sun 16:00 Track</span>
+        </div>
+      </div>
+      <div class="weekend-standings">
+        <div>
+          <div class="standings-col-label">Drivers' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">Norris</span></div>
+            <span class="mini-pts">271 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Verstappen</span></div>
+            <span class="mini-pts">256 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">Piastri</span></div>
+            <span class="mini-pts">214 pts</span>
+          </div>
+        </div>
+        <div>
+          <div class="standings-col-label">Constructors' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">McLaren</span></div>
+            <span class="mini-pts">485 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Red Bull Racing</span></div>
+            <span class="mini-pts">359 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="mini-name">Ferrari</span></div>
+            <span class="mini-pts">347 pts</span>
+          </div>
+        </div>
+      </div>
+    </a>
+
+    <a class="weekend-card past">
+      <div class="weekend-head">
+        <div class="weekend-circuit">
+          <span class="weekend-flag">🇯🇵</span>
+          <span class="weekend-name">Japanese Grand Prix</span>
+          <span class="weekend-country">Suzuka</span>
+        </div>
+        <div class="weekend-dates">
+          <span class="past-label">Completed</span><br>
+          <span style="margin-top:6px;display:inline-block;">4–6 Apr 2026</span><br>
+          <span class="race-time">Race: Sun 14:00 Track</span>
+        </div>
+      </div>
+      <div class="weekend-standings">
+        <div>
+          <div class="standings-col-label">Drivers' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Verstappen</span></div>
+            <span class="mini-pts">86 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">Norris</span></div>
+            <span class="mini-pts">80 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="mini-name">Leclerc</span></div>
+            <span class="mini-pts">68 pts</span>
+          </div>
+        </div>
+        <div>
+          <div class="standings-col-label">Constructors' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">McLaren</span></div>
+            <span class="mini-pts">142 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Red Bull Racing</span></div>
+            <span class="mini-pts">119 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="mini-name">Ferrari</span></div>
+            <span class="mini-pts">103 pts</span>
+          </div>
+        </div>
+      </div>
+    </a>
+
+    <a class="weekend-card past">
+      <div class="weekend-head">
+        <div class="weekend-circuit">
+          <span class="weekend-flag">🇧🇭</span>
+          <span class="weekend-name">Bahrain Grand Prix</span>
+          <span class="weekend-country">Sakhir</span>
+        </div>
+        <div class="weekend-dates">
+          <span class="past-label">Completed</span><br>
+          <span style="margin-top:6px;display:inline-block;">7–9 Mar 2026</span><br>
+          <span class="race-time">Race: Sun 18:00 Track</span>
+        </div>
+      </div>
+      <div class="weekend-standings">
+        <div>
+          <div class="standings-col-label">Drivers' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">Norris</span></div>
+            <span class="mini-pts">25 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">Piastri</span></div>
+            <span class="mini-pts">18 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Verstappen</span></div>
+            <span class="mini-pts">15 pts</span>
+          </div>
+        </div>
+        <div>
+          <div class="standings-col-label">Constructors' Championship</div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="mini-name">McLaren</span></div>
+            <span class="mini-pts">43 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">2</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="mini-name">Red Bull Racing</span></div>
+            <span class="mini-pts">23 pts</span>
+          </div>
+          <div class="mini-standing-row">
+            <div class="mini-standing-left"><span class="mini-pos">3</span><span class="team-dot" style="background:var(--team-mercedes)"></span><span class="mini-name">Mercedes</span></div>
+            <span class="mini-pts">19 pts</span>
+          </div>
+        </div>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+</body>
+</html>

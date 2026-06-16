@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Direction 1 — Cockpit HUD — F1_poc Live Race</title>
+<!--
+  DIRECTION 1: COCKPIT HUD
+  ==========================================================================
+  RATIONALE: This direction simulates the FIA race-control / team-pitwall
+  telemetry HUD: dense data, monospace numerics, sharp square corners,
+  bold full-row team-colour borders, tight spacing, and a pulsing glow on
+  values that just updated. It deliberately rejects "rounded SaaS card"
+  conventions in favour of an instrument-panel feel — this is for the fan
+  who wants maximum information per second, like watching the pitwall feed.
+  ==========================================================================
+
+  COLOUR TOKENS USED IN THIS FILE (hex):
+  --bg-app:        #05070a   (near-black app background)
+  --bg-panel:      #0b0f14   (panel background, slightly lifted)
+  --bg-panel-alt:  #0e1319   (secondary panel / row stripe)
+  --bg-inset:      #030507   (recessed track-map / chart wells)
+  --border-hud:    #1c242c   (hairline borders between HUD panels)
+  --text-primary:  #e8edf2   (primary numeric/label text, near-white)
+  --text-secondary:#7c8a99   (secondary labels, units, captions)
+  --text-dim:      #4a5560   (stale / disabled text)
+  --accent-amber:  #ffb000   (HUD master accent — warnings, live tag)
+  --accent-cyan:   #00e5ff   (telemetry highlight, sector-board glow)
+
+  BROADCAST COLOUR CODING (fixed, do not repurpose):
+  --sector-purple: #c042ff   (fastest overall mini-sector / sector)
+  --sector-green:  #00d168   (personal best mini-sector)
+  --sector-yellow: #ffd400   (normal pace mini-sector)
+  --sector-white:  #f4f6f8   (in/out lap mini-sector)
+  --tyre-soft:     #ff2d2d   (Soft compound)
+  --tyre-medium:   #ffd400   (Medium compound)
+  --tyre-hard:     #f4f6f8   (Hard compound)
+  --tyre-inter:    #00d168   (Intermediate compound)
+  --tyre-wet:      #1e6bff   (Wet compound)
+
+  CONSTRUCTOR ACCENT COLOURS (2026-ish, used as left-border/tint per row):
+  --team-redbull:    #1b2a6b  (Red Bull Racing — dark navy/blue)
+  --team-redbull-2:  #3671ea  (Red Bull secondary blue, for glow/text)
+  --team-ferrari:    #e8002d  (Ferrari red)
+  --team-mercedes:   #00d2be  (Mercedes teal)
+  --team-mclaren:    #ff8000  (McLaren papaya orange)
+  ==========================================================================
+-->
+<style>
+  :root{
+    --bg-app:#05070a;
+    --bg-panel:#0b0f14;
+    --bg-panel-alt:#0e1319;
+    --bg-inset:#030507;
+    --border-hud:#1c242c;
+    --text-primary:#e8edf2;
+    --text-secondary:#7c8a99;
+    --text-dim:#4a5560;
+    --accent-amber:#ffb000;
+    --accent-cyan:#00e5ff;
+
+    --sector-purple:#c042ff;
+    --sector-green:#00d168;
+    --sector-yellow:#ffd400;
+    --sector-white:#f4f6f8;
+
+    --tyre-soft:#ff2d2d;
+    --tyre-medium:#ffd400;
+    --tyre-hard:#f4f6f8;
+    --tyre-inter:#00d168;
+    --tyre-wet:#1e6bff;
+
+    --team-redbull:#1b2a6b;
+    --team-redbull-2:#3671ea;
+    --team-ferrari:#e8002d;
+    --team-mercedes:#00d2be;
+    --team-mclaren:#ff8000;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg-app);}
+  body{
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", "Consolas", "Roboto Mono", monospace;
+    color:var(--text-primary);
+    display:flex;
+    justify-content:center;
+    padding:24px 12px;
+  }
+
+  .note{
+    max-width:1440px;
+    margin:0 auto 14px auto;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size:12px;
+    color:var(--text-secondary);
+    border:1px dashed var(--border-hud);
+    padding:8px 12px;
+    background:var(--bg-panel);
+  }
+  .note b{color:var(--accent-amber);}
+
+  /* Browser frame */
+  .browser-frame{
+    width:1440px;
+    max-width:100%;
+    background:var(--bg-panel);
+    border:1px solid var(--border-hud);
+    border-radius:6px;
+    overflow:hidden;
+    box-shadow:0 0 0 1px #000, 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .browser-chrome{
+    height:34px;
+    background:#0d1218;
+    border-bottom:1px solid var(--border-hud);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:0 12px;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .dot{width:10px;height:10px;border-radius:50%;}
+  .dot.r{background:#ff5f56;}
+  .dot.y{background:#ffbd2e;}
+  .dot.g{background:#27c93f;}
+  .url-bar{
+    margin-left:12px;
+    background:#05080b;
+    border:1px solid var(--border-hud);
+    border-radius:3px;
+    color:var(--text-secondary);
+    font-size:11px;
+    padding:3px 10px;
+    flex:1;
+    max-width:420px;
+  }
+
+  /* App shell */
+  .app-shell{background:var(--bg-app);padding:14px;}
+
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--bg-panel);
+    border:1px solid var(--border-hud);
+    padding:10px 16px;
+    margin-bottom:10px;
+  }
+  .topbar-left{display:flex;align-items:center;gap:14px;}
+  .logo{
+    font-weight:700;
+    letter-spacing:2px;
+    font-size:14px;
+    color:var(--accent-amber);
+  }
+  .session-meta{display:flex;gap:18px;font-size:11px;color:var(--text-secondary);}
+  .session-meta b{color:var(--text-primary);font-weight:700;}
+  .live-tag{
+    display:flex;align-items:center;gap:6px;
+    background:#1a0e00;
+    border:1px solid var(--accent-amber);
+    color:var(--accent-amber);
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:1px;
+    padding:4px 10px;
+  }
+  .live-dot{
+    width:7px;height:7px;border-radius:50%;background:var(--accent-amber);
+    animation:pulse 1.4s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(255,176,0,0.7);}
+    70%{box-shadow:0 0 0 6px rgba(255,176,0,0);}
+    100%{box-shadow:0 0 0 0 rgba(255,176,0,0);}
+  }
+  @keyframes glowtext{
+    0%,100%{text-shadow:0 0 0 rgba(0,229,255,0);}
+    50%{text-shadow:0 0 8px rgba(0,229,255,0.85);}
+  }
+  .updating{animation:glowtext 1.8s ease-in-out infinite;}
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1.55fr 0.95fr;
+    gap:10px;
+  }
+  .col-stack{display:flex;flex-direction:column;gap:10px;}
+
+  .panel{
+    background:var(--bg-panel);
+    border:1px solid var(--border-hud);
+  }
+  .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:7px 12px;
+    border-bottom:1px solid var(--border-hud);
+    background:var(--bg-panel-alt);
+  }
+  .panel-title{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:1.5px;
+    color:var(--text-secondary);
+    text-transform:uppercase;
+  }
+  .panel-sub{font-size:10px;color:var(--text-dim);}
+
+  /* GAP LIST */
+  table.gaplist{width:100%;border-collapse:collapse;font-size:12px;}
+  table.gaplist thead th{
+    text-align:left;
+    font-size:10px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:1px;
+    padding:6px 10px;
+    border-bottom:1px solid var(--border-hud);
+    font-weight:600;
+  }
+  table.gaplist td{
+    padding:6px 10px;
+    border-bottom:1px solid #11161c;
+    vertical-align:middle;
+  }
+  table.gaplist tr.row{border-left:4px solid transparent;}
+  .pos{font-weight:700;color:var(--text-primary);width:24px;}
+  .drv{display:flex;align-items:center;gap:7px;}
+  .drv-code{font-weight:700;letter-spacing:0.5px;}
+  .team-chip{width:8px;height:8px;display:inline-block;}
+  .gap{font-weight:700;}
+  .gap.battle{
+    color:var(--sector-yellow);
+    background:#241d00;
+    padding:2px 6px;
+    border:1px solid #4a3c00;
+  }
+  .tyre-cell{display:flex;align-items:center;gap:6px;}
+  .tyre-dot{width:11px;height:11px;border-radius:50%;border:1.5px solid #00000055;}
+  .delta-note{font-size:10px;color:var(--text-secondary);}
+  .delta-note .prov{color:var(--accent-cyan);font-weight:700;}
+  .stale-row td{color:var(--text-dim) !important;}
+  .stale-row .drv-code{color:var(--text-dim);}
+  .stale-tag{
+    font-size:9px;
+    border:1px solid #3a2c00;
+    color:var(--accent-amber);
+    padding:1px 4px;
+    margin-left:6px;
+  }
+
+  tr.row.rb{background:linear-gradient(90deg, rgba(27,42,107,0.35), transparent 60%);border-left-color:var(--team-redbull-2);}
+  tr.row.fer{background:linear-gradient(90deg, rgba(232,0,45,0.18), transparent 60%);border-left-color:var(--team-ferrari);}
+  tr.row.mer{background:linear-gradient(90deg, rgba(0,210,190,0.16), transparent 60%);border-left-color:var(--team-mercedes);}
+  tr.row.mcl{background:linear-gradient(90deg, rgba(255,128,0,0.16), transparent 60%);border-left-color:var(--team-mclaren);}
+
+  /* TRACK MAP */
+  .trackmap-wrap{padding:10px;}
+  .trackmap{
+    background:var(--bg-inset);
+    border:1px solid var(--border-hud);
+    height:230px;
+    position:relative;
+    overflow:hidden;
+  }
+  .car-dot{
+    position:absolute;
+    width:16px;height:16px;
+    border-radius:50%;
+    border:2px solid #000;
+    display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:700;color:#000;
+  }
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--text-secondary);padding:8px 10px 0;}
+  .legend span{display:inline-flex;align-items:center;gap:4px;}
+  .legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
+
+  /* SECTOR BOARD */
+  .sector-board{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border-hud);}
+  .sector-cell{background:var(--bg-panel);padding:12px 10px;}
+  .sector-label{font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;}
+  .sector-time{
+    font-size:20px;font-weight:700;color:var(--sector-purple);
+    text-shadow:0 0 12px rgba(192,66,255,0.55);
+    margin-top:4px;
+  }
+  .sector-holder{font-size:11px;color:var(--text-secondary);margin-top:2px;}
+
+  /* LAP CHART */
+  .chart-wrap{padding:10px;}
+  .chart-box{
+    background:var(--bg-inset);
+    border:1px solid var(--border-hud);
+    height:150px;
+    position:relative;
+  }
+  .chart-legend{display:flex;gap:16px;font-size:10px;padding:8px 10px 0;color:var(--text-secondary);}
+  .chart-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .chart-legend i{width:14px;height:2px;display:inline-block;}
+
+  /* EVENT TIMELINE */
+  .timeline-wrap{padding:14px 16px 18px;}
+  .timeline-track{
+    position:relative;
+    height:6px;
+    background:#161c23;
+    border:1px solid var(--border-hud);
+    margin-top:30px;
+  }
+  .timeline-fill{
+    position:absolute;left:0;top:0;bottom:0;
+    background:linear-gradient(90deg, var(--accent-amber), #7a5200);
+    width:54%;
+  }
+  .tl-marker{
+    position:absolute;top:-26px;
+    transform:translateX(-50%);
+    font-size:9px;
+    color:var(--text-secondary);
+    text-align:center;
+    white-space:nowrap;
+  }
+  .tl-marker .pin{
+    width:2px;height:32px;background:var(--border-hud);
+    margin:4px auto 0;position:relative;
+  }
+  .tl-marker.sc .pin{background:var(--sector-yellow);}
+  .tl-marker.pit .pin{background:var(--accent-cyan);}
+  .tl-marker.fl .pin{background:var(--sector-purple);}
+  .tl-axis{display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim);margin-top:6px;}
+
+  .empty-widget{
+    height:90px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--text-dim);
+    font-size:11px;
+    border:1px dashed var(--border-hud);
+    margin:10px;
+    background:repeating-linear-gradient(45deg, #0b0f14 0 10px, #0d1117 10px 20px);
+  }
+</style>
+</head>
+<body>
+
+<div class="note">
+  Design direction <b>1 of 3 — Cockpit HUD</b>. Dense telemetry/race-control aesthetic. Monospace numerics, sharp corners, bold team-colour row treatment, pulsing live glow.
+</div>
+
+<div class="browser-frame">
+  <div class="browser-chrome">
+    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+    <div class="url-bar">f1poc.app/live/monza</div>
+  </div>
+
+  <div class="app-shell">
+
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="logo">F1_POC // RACE CONTROL</div>
+        <div class="session-meta">
+          <span>MONZA · ITALIAN GP</span>
+          <span>LAP <b>41</b>/53</span>
+          <span>AIR <b>27°C</b> · TRACK <b>41°C</b></span>
+        </div>
+      </div>
+      <div class="live-tag"><span class="live-dot"></span> LIVE · UPDATED 0.8s AGO</div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT COLUMN -->
+      <div class="col-stack">
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Live Gap List</div>
+            <div class="panel-sub">Battles &lt;1.0s flagged</div>
+          </div>
+          <table class="gaplist">
+            <thead>
+              <tr><th>P</th><th>Driver</th><th>Gap</th><th>Tyre / Stint</th><th>Provisional Δ</th></tr>
+            </thead>
+            <tbody>
+              <tr class="row rb">
+                <td class="pos">1</td>
+                <td><div class="drv"><span class="team-chip" style="background:var(--team-redbull-2)"></span><span class="drv-code">VER</span></div></td>
+                <td class="gap updating">LEADER</td>
+                <td><div class="tyre-cell"><span class="tyre-dot" style="background:var(--tyre-medium)"></span>Medium · L26</div></td>
+                <td class="delta-note"><span class="prov">PROV</span> if race ended now: P1 (no change)</td>
+              </tr>
+              <tr class="row mcl">
+                <td class="pos">2</td>
+                <td><div class="drv"><span class="team-chip" style="background:var(--team-mclaren)"></span><span class="drv-code">NOR</span></div></td>
+                <td class="gap battle updating">+0.412</td>
+                <td><div class="tyre-cell"><span class="tyre-dot" style="background:var(--tyre-medium)"></span>Medium · L26</div></td>
+                <td class="delta-note"><span class="prov">PROV</span> if race ended now: +6 pts to P2</td>
+              </tr>
+              <tr class="row fer">
+                <td class="pos">3</td>
+                <td><div class="drv"><span class="team-chip" style="background:var(--team-ferrari)"></span><span class="drv-code">LEC</span></div></td>
+                <td class="gap battle updating">+0.687</td>
+                <td><div class="tyre-cell"><span class="tyre-dot" style="background:var(--tyre-soft)"></span>Soft · L9</div></td>
+                <td class="delta-note"><span class="prov">PROV</span> if race ended now: +4 pts to P3</td>
+              </tr>
+              <tr class="row mcl">
+                <td class="pos">4</td>
+                <td><div class="drv"><span class="team-chip" style="background:var(--team-mclaren)"></span><span class="drv-code">PIA</span></div></td>
+                <td class="gap">+4.215</td>
+                <td><div class="tyre-cell"><span class="tyre-dot" style="background:var(--tyre-medium)"></span>Medium · L26</div></td>
+                <td class="delta-note"><span class="prov">PROV</span> no change to standings</td>
+              </tr>
+              <tr class="row mer">
+                <td class="pos">5</td>
+                <td><div class="drv"><span class="team-chip" style="background:var(--team-mercedes)"></span><span class="drv-code">RUS</span></div></td>
+                <td class="gap">+9.041</td>
+                <td><div class="tyre-cell"><span class="tyre-dot" style="background:var(--tyre-hard)"></span>Hard · L18</div></td>
+                <td class="delta-note"><span class="prov">PROV</span> -2 pts vs current P5</td>
+              </tr>
+              <tr class="row mer stale-row">
+                <td class="pos">6</td>
+                <td><div class="drv"><span class="team-chip" style="background:var(--team-mercedes)"></span><span class="drv-code">HAM</span><span class="stale-tag">~ STALE</span></div></td>
+                <td class="gap">~+13.7</td>
+                <td><div class="tyre-cell"><span class="tyre-dot" style="background:var(--tyre-hard)"></span>Hard · L18</div></td>
+                <td class="delta-note">~ signal lost 6s ago</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Live Lap Time Trace</div>
+            <div class="panel-sub">Last 12 laps</div>
+          </div>
+          <div class="chart-legend">
+            <span><i style="background:var(--team-mclaren)"></i>NOR</span>
+            <span><i style="background:var(--team-ferrari)"></i>LEC (pit-out spike L33)</span>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-box">
+              <svg viewBox="0 0 600 150" width="100%" height="100%" preserveAspectRatio="none">
+                <line x1="0" y1="37" x2="600" y2="37" stroke="#1c242c" stroke-width="1"/>
+                <line x1="0" y1="75" x2="600" y2="75" stroke="#1c242c" stroke-width="1"/>
+                <line x1="0" y1="112" x2="600" y2="112" stroke="#1c242c" stroke-width="1"/>
+                <polyline points="0,80 50,78 100,82 150,79 200,81 250,77 300,80 350,79 400,78 450,80 500,76 550,79 600,77"
+                  fill="none" stroke="var(--team-mclaren)" stroke-width="2.5"/>
+                <polyline points="0,88 50,85 100,90 150,86 200,20 250,95 300,89 350,87 400,88 450,86 500,84 550,87 600,85"
+                  fill="none" stroke="var(--team-ferrari)" stroke-width="2.5"/>
+                <circle cx="200" cy="20" r="4" fill="var(--accent-cyan)"/>
+                <text x="206" y="16" fill="var(--accent-cyan)" font-size="9" font-family="monospace">PIT OUT L33</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Race Event Timeline</div>
+            <div class="panel-sub">Lap 1 → 53</div>
+          </div>
+          <div class="timeline-wrap">
+            <div class="timeline-track">
+              <div class="timeline-fill"></div>
+              <div class="tl-marker sc" style="left:22%;">SC<div class="pin"></div>L12</div>
+              <div class="tl-marker pit" style="left:38%;">PIT LEC<div class="pin"></div>L20</div>
+              <div class="tl-marker pit" style="left:49%;">PIT VER<div class="pin"></div>L26</div>
+              <div class="tl-marker fl" style="left:62%;">FL NOR<div class="pin"></div>L33</div>
+            </div>
+            <div class="tl-axis"><span>L1</span><span>L13</span><span>L27</span><span>L40</span><span>L53</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="col-stack">
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Track Map — Monza</div>
+            <div class="panel-sub">Sector colour live</div>
+          </div>
+          <div class="trackmap-wrap">
+            <div class="trackmap">
+              <svg viewBox="0 0 400 220" width="100%" height="100%" style="position:absolute;top:0;left:0;">
+                <path d="M40,180 L40,90 Q40,60 70,55 L260,40 Q300,36 305,70 L300,110 Q298,130 270,128 L160,126 Q140,126 140,150 L142,170 Q144,190 120,190 L70,190 Q40,190 40,180 Z"
+                  fill="none" stroke="#2a3440" stroke-width="10" stroke-linejoin="round"/>
+                <path d="M40,180 L40,90 Q40,60 70,55 L260,40 Q300,36 305,70 L300,110 Q298,130 270,128 L160,126 Q140,126 140,150 L142,170 Q144,190 120,190 L70,190 Q40,190 40,180 Z"
+                  fill="none" stroke="#11161c" stroke-width="8" stroke-linejoin="round" stroke-dasharray="2 6"/>
+              </svg>
+              <div class="car-dot" style="top:48px;left:255px;background:var(--sector-purple);">1</div>
+              <div class="car-dot" style="top:36px;left:160px;background:var(--team-mclaren);">4</div>
+              <div class="car-dot" style="top:122px;left:280px;background:var(--team-ferrari);">16</div>
+              <div class="car-dot" style="top:170px;left:55px;background:var(--team-mercedes);">63</div>
+              <div class="car-dot" style="top:185px;left:95px;background:var(--team-mercedes);">44</div>
+            </div>
+            <div class="legend">
+              <span><i style="background:var(--sector-purple)"></i>Fastest mini-sector (car 1)</span>
+              <span><i style="background:var(--team-mclaren)"></i>McLaren</span>
+              <span><i style="background:var(--team-ferrari)"></i>Ferrari</span>
+              <span><i style="background:var(--team-mercedes)"></i>Mercedes</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Fastest Sector Board</div>
+            <div class="panel-sub">Session best</div>
+          </div>
+          <div class="sector-board">
+            <div class="sector-cell">
+              <div class="sector-label">Sector 1</div>
+              <div class="sector-time">26.114</div>
+              <div class="sector-holder">VER · L29</div>
+            </div>
+            <div class="sector-cell">
+              <div class="sector-label">Sector 2</div>
+              <div class="sector-time">31.882</div>
+              <div class="sector-holder">NOR · L33</div>
+            </div>
+            <div class="sector-cell">
+              <div class="sector-label">Sector 3</div>
+              <div class="sector-time">22.501</div>
+              <div class="sector-holder">LEC · L31</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Tyre Stint Overview</div>
+            <div class="panel-sub">All runners</div>
+          </div>
+          <table class="gaplist">
+            <tbody>
+              <tr class="row rb"><td class="drv-code" style="padding-left:10px;">VER</td><td><div class="tyre-cell"><span class="tyre-dot" style="background:var(--tyre-medium)"></span>Medium · L26</div></td></tr>
+              <tr class="row mcl"><td class="drv-code" style="padding-left:10px;">NOR</td><td><div class="tyre-cell"><span class="tyre-dot" style="background:var(--tyre-medium)"></span>Medium · L26</div></td></tr>
+              <tr class="row fer"><td class="drv-code" style="padding-left:10px;">LEC</td><td><div class="tyre-cell"><span class="tyre-dot" style="background:var(--tyre-soft)"></span>Soft · L9</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Weather Radar</div>
+            <div class="panel-sub">Awaiting feed</div>
+          </div>
+          <div class="empty-widget">NO DATA — RADAR FEED CONNECTING…</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

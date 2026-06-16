@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fan Card Setup — F1_poc</title>
+<style>
+/*
+  Illustrates:
+  - DESIGN.md Components.wizard-step (gold indicator = current step, border-soft = upcoming step)
+  - DESIGN.md Components.nav-topbar, card (dimmed background page behind the overlay)
+  - DESIGN.md Colors (accent-editorial as the only non-team gold accent, used for the active step + selected option)
+  - DESIGN.md Elevation & Depth (flat surfaces, no drop shadows — overlay card reads as lifted via tonal step, not shadow)
+  - EXPERIENCE.md Information Architecture (Fan Card: top nav, also prompted on first visit)
+  - EXPERIENCE.md Component Patterns row "Fan Card wizard" (3-step picker Driver -> Constructor -> Circuit, re-enterable anytime)
+  - EXPERIENCE.md Interaction Primitives (Esc closes the topmost overlay; modal stacks never exceed one level)
+  - EXPERIENCE.md State Patterns row "Fan Card not yet set up" (empty state prompts wizard directly, no "feature locked" framing)
+  - EXPERIENCE.md Voice and Tone (plain, fan-to-fan copy, no emoji/hype language)
+*/
+:root{
+  --bg-app:#14171c;
+  --bg-card:#1b1f26;
+  --bg-card-hover:#20242c;
+  --bg-inset:#11141a;
+  --border-soft:#2a2f38;
+  --text-primary:#eef0f3;
+  --text-secondary:#9aa1ad;
+  --text-tertiary:#6b7280;
+  --text-dim:#4b5160;
+  --accent-editorial:#d8b65c;
+
+  --team-redbull:#2741a6;
+  --team-ferrari:#ef1a2d;
+  --team-mercedes:#1fd6c1;
+  --team-mclaren:#ff8a1e;
+
+  --radius-sm:6px;
+  --radius-md:12px;
+  --radius-lg:14px;
+  --radius-full:9999px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;background:var(--bg-app);}
+body{
+  font-family:"Avenir Next","Segoe UI",ui-sans-serif,system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--text-primary);
+}
+
+/* ---------- background page (Calendar, dimmed behind overlay) ---------- */
+.nav-topbar{
+  height:56px;
+  background:var(--bg-card);
+  border-bottom:1px solid var(--border-soft);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 28px;
+}
+.nav-left{display:flex;align-items:center;gap:32px;}
+.nav-brand{font-size:15px;font-weight:700;letter-spacing:-0.01em;color:var(--text-primary);}
+.nav-brand span{color:var(--accent-editorial);}
+.nav-links{display:flex;align-items:center;gap:22px;list-style:none;margin:0;padding:0;}
+.nav-links a{color:var(--text-secondary);text-decoration:none;font-size:13px;}
+.nav-links a.active{color:var(--text-primary);font-weight:600;}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.streak-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--bg-inset);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-full);
+  padding:5px 12px;
+  font-size:11.5px;font-weight:600;letter-spacing:0.04em;
+  color:var(--text-secondary);
+}
+.streak-badge b{color:var(--accent-editorial);font-weight:700;}
+.fancard-link{
+  font-size:13px;color:var(--text-primary);text-decoration:none;
+  border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:6px 14px;
+}
+
+.page-behind{max-width:1100px;margin:0 auto;padding:32px 28px 64px;}
+h1.page-title{font-size:26px;font-weight:700;line-height:1.2;letter-spacing:-0.01em;margin:0 0 4px;}
+.page-sub{font-size:13px;color:var(--text-secondary);margin:0 0 28px;}
+.weekend-card{
+  background:var(--bg-card);
+  border:1px solid var(--accent-editorial);
+  border-radius:var(--radius-lg);
+  padding:18px 22px;
+  margin-bottom:16px;
+}
+.weekend-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+.weekend-name{font-size:15px;font-weight:700;letter-spacing:-0.01em;}
+.weekend-dates{text-align:right;font-size:12px;color:var(--text-secondary);}
+.weekend-card.plain{border-color:var(--border-soft);opacity:0.9;}
+
+/* ---------- dim/scrim layer ---------- */
+.scrim{
+  position:fixed;
+  inset:0;
+  background:rgba(10,12,15,0.72);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+}
+
+/* ---------- overlay modal ---------- */
+.modal{
+  width:560px;
+  max-width:92vw;
+  background:var(--bg-card);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-lg);
+  padding:28px 32px 32px;
+}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
+.modal-title{font-size:26px;font-weight:700;line-height:1.2;letter-spacing:-0.01em;}
+.modal-close{
+  appearance:none;
+  background:transparent;
+  border:1px solid var(--border-soft);
+  color:var(--text-secondary);
+  border-radius:var(--radius-full);
+  width:28px;height:28px;
+  font-size:14px;
+  cursor:pointer;
+  flex-shrink:0;
+}
+.modal-close:hover{border-color:var(--accent-editorial);color:var(--accent-editorial);}
+.modal-sub{font-size:13px;color:var(--text-secondary);margin:0 0 26px;}
+
+/* ---------- wizard-step ---------- */
+.wizard-steps{
+  display:flex;
+  align-items:center;
+  margin-bottom:28px;
+}
+.wizard-step{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex:1;
+}
+.wizard-step .indicator{
+  width:26px;height:26px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+  flex-shrink:0;
+  border:2px solid var(--border-soft);
+  color:var(--text-tertiary);
+  background:var(--bg-inset);
+}
+.wizard-step.done .indicator{
+  background:var(--accent-editorial);
+  border-color:var(--accent-editorial);
+  color:#241c10;
+}
+.wizard-step.active .indicator{
+  border-color:var(--accent-editorial);
+  color:var(--accent-editorial);
+  background:var(--bg-inset);
+}
+.wizard-step .label-text{
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--text-tertiary);
+}
+.wizard-step.done .label-text{color:var(--text-secondary);}
+.wizard-step.active .label-text{color:var(--text-primary);}
+.wizard-connector{
+  flex:0 0 28px;
+  height:2px;
+  background:var(--border-soft);
+  margin:0 4px;
+}
+.wizard-connector.done{background:var(--accent-editorial);}
+
+.step-heading{font-size:15px;font-weight:700;letter-spacing:-0.01em;margin:0 0 4px;}
+.step-caption{font-size:12.5px;color:var(--text-tertiary);margin:0 0 18px;}
+
+/* ---------- constructor selection grid ---------- */
+.option-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:24px;
+}
+.option-card{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:var(--bg-inset);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-md);
+  padding:12px 14px;
+  cursor:pointer;
+}
+.option-card:hover{background:var(--bg-card-hover);}
+.option-card.selected{
+  border-color:var(--accent-editorial);
+  background:var(--bg-card-hover);
+}
+.option-team-rule{
+  width:4px;
+  align-self:stretch;
+  border-radius:var(--radius-full);
+  flex-shrink:0;
+}
+.option-name{font-size:13px;font-weight:600;color:var(--text-primary);}
+.option-meta{font-size:11.5px;color:var(--text-tertiary);margin-top:2px;}
+.option-check{
+  margin-left:auto;
+  width:18px;height:18px;
+  border-radius:50%;
+  border:2px solid var(--border-soft);
+  flex-shrink:0;
+}
+.option-card.selected .option-check{
+  border-color:var(--accent-editorial);
+  background:var(--accent-editorial);
+}
+
+.modal-actions{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding-top:8px;
+  border-top:1px solid var(--border-soft);
+}
+.btn{
+  appearance:none;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:600;
+  border-radius:var(--radius-md);
+  padding:9px 20px;
+  cursor:pointer;
+}
+.btn-back{
+  background:transparent;
+  border:1px solid var(--border-soft);
+  color:var(--text-secondary);
+}
+.btn-back:hover{border-color:var(--text-secondary);color:var(--text-primary);}
+.btn-next{
+  background:var(--accent-editorial);
+  border:1px solid var(--accent-editorial);
+  color:#241c10;
+}
+.btn-next:hover{opacity:0.9;}
+</style>
+</head>
+<body>
+
+<!-- Background page: Calendar, dimmed underneath the overlay -->
+<nav class="nav-topbar">
+  <div class="nav-left">
+    <div class="nav-brand">F1<span>_poc</span></div>
+    <ul class="nav-links">
+      <li><a href="#" class="active">Calendar</a></li>
+      <li><a href="#">Live Race</a></li>
+      <li><a href="#">Standings</a></li>
+      <li><a href="#">Profiles</a></li>
+      <li><a href="#">News Feed</a></li>
+    </ul>
+  </div>
+  <div class="nav-right">
+    <span class="streak-badge">Streak <b>7</b></span>
+    <a href="#" class="fancard-link">Fan Card</a>
+  </div>
+</nav>
+
+<div class="page-behind">
+  <h1 class="page-title">Race Calendar</h1>
+  <p class="page-sub">Season schedule. Next race pinned at the top.</p>
+
+  <div class="weekend-card">
+    <div class="weekend-head">
+      <span class="weekend-name">🇮🇹 Italian Grand Prix — Monza</span>
+      <span class="weekend-dates">5–7 Sep 2026</span>
+    </div>
+  </div>
+  <div class="weekend-card plain">
+    <div class="weekend-head">
+      <span class="weekend-name">🇧🇪 Belgian Grand Prix — Spa-Francorchamps</span>
+      <span class="weekend-dates">25–27 Jul 2026</span>
+    </div>
+  </div>
+  <div class="weekend-card plain">
+    <div class="weekend-head">
+      <span class="weekend-name">🇬🇧 British Grand Prix — Silverstone</span>
+      <span class="weekend-dates">4–6 Jul 2026</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scrim + Fan Card wizard overlay, modal stacks one level deep per EXPERIENCE.md Interaction Primitives -->
+<div class="scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="fancard-title">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="fancard-title">Set up your Fan Card</div>
+      </div>
+      <button class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <p class="modal-sub">Pick a driver, a constructor, and a circuit. You can come back and change any of these later.</p>
+
+    <div class="wizard-steps">
+      <div class="wizard-step done">
+        <div class="indicator">✓</div>
+        <div class="label-text">Driver</div>
+      </div>
+      <div class="wizard-connector done"></div>
+      <div class="wizard-step active">
+        <div class="indicator">2</div>
+        <div class="label-text">Constructor</div>
+      </div>
+      <div class="wizard-connector"></div>
+      <div class="wizard-step">
+        <div class="indicator">3</div>
+        <div class="label-text">Circuit</div>
+      </div>
+    </div>
+
+    <div class="step-heading">Choose your constructor</div>
+    <p class="step-caption">You picked Lando Norris in the previous step. This doesn't have to match.</p>
+
+    <div class="option-grid">
+      <div class="option-card selected">
+        <span class="option-team-rule" style="background:var(--team-mclaren)"></span>
+        <div>
+          <div class="option-name">McLaren</div>
+          <div class="option-meta">Norris · Piastri</div>
+        </div>
+        <span class="option-check"></span>
+      </div>
+      <div class="option-card">
+        <span class="option-team-rule" style="background:var(--team-redbull)"></span>
+        <div>
+          <div class="option-name">Red Bull Racing</div>
+          <div class="option-meta">Verstappen · Pérez</div>
+        </div>
+        <span class="option-check"></span>
+      </div>
+      <div class="option-card">
+        <span class="option-team-rule" style="background:var(--team-ferrari)"></span>
+        <div>
+          <div class="option-name">Ferrari</div>
+          <div class="option-meta">Leclerc · Hamilton</div>
+        </div>
+        <span class="option-check"></span>
+      </div>
+      <div class="option-card">
+        <span class="option-team-rule" style="background:var(--team-mercedes)"></span>
+        <div>
+          <div class="option-name">Mercedes</div>
+          <div class="option-meta">Russell · Antonelli</div>
+        </div>
+        <span class="option-check"></span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-back">Back</button>
+      <button class="btn btn-next">Next: Circuit</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
