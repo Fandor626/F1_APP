@@ -1,4 +1,8 @@
+using System.Net;
 using System.Text.Json.Serialization;
+using F1App.Api.Clients;
+using F1App.Api.Services;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +24,20 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
+builder.Services.AddProblemDetails();
+builder.Services.AddMemoryCache();
+
+// Trailing slash is required: HttpClient resolves a relative request URI
+// ("current.json") against BaseAddress by replacing the last path segment
+// unless BaseAddress itself ends in "/".
+var ergastBaseUrl = builder.Configuration["ErgastBaseUrl"]!.TrimEnd('/') + "/";
+builder.Services.AddHttpClient<IErgastClient, ErgastClient>(client =>
+{
+    client.BaseAddress = new Uri(ergastBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddScoped<RaceScheduleService>();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -31,6 +49,32 @@ if (allowedOrigins.Length == 0)
         "AllowedOrigins is empty — CORS will block every cross-origin request. " +
         "Check that appsettings.Development.json (gitignored) exists and defines AllowedOrigins.");
 }
+
+// Global exception handling: controllers/services throw, this converts to
+// ProblemDetails (RFC 7807). Upstream data-source failures (Ergast/OpenF1
+// unreachable or timing out) map to 502 so the frontend can distinguish
+// "our bug" from "their API is down" and show the right error copy.
+app.UseExceptionHandler(exceptionHandlerApp => exceptionHandlerApp.Run(async context =>
+{
+    var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+    var isUpstreamFailure = exception is HttpRequestException or TaskCanceledException or InvalidOperationException;
+
+    if (isUpstreamFailure)
+    {
+        app.Logger.LogWarning(exception, "Upstream data source unavailable");
+        context.Response.StatusCode = (int)HttpStatusCode.BadGateway;
+    }
+    else
+    {
+        app.Logger.LogError(exception, "Unhandled exception");
+        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+    }
+
+    await Results.Problem(
+        title: isUpstreamFailure ? "Upstream data source unavailable" : "An unexpected error occurred",
+        statusCode: context.Response.StatusCode
+    ).ExecuteAsync(context);
+}));
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

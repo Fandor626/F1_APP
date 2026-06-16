@@ -1,3 +1,3 @@
 export const queryKeys = {
-  health: ['health'] as const,
+  races: ['races', 'current'] as const,
 }

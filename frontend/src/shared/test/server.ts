@@ -1,4 +1,4 @@
 import { setupServer } from 'msw/node'
-import { healthHandlers } from '../mocks/handlers/healthHandlers'
+import { ergastHandlers } from '../mocks/handlers/ergastHandlers'
 
-export const server = setupServer(...healthHandlers)
+export const server = setupServer(...ergastHandlers)
