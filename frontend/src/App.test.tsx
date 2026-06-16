@@ -27,9 +27,21 @@ describe('App health check round trip', () => {
     )
   })
 
-  it('shows an unreachable message when the backend call fails', async () => {
+  it('shows an unreachable message when the network request fails', async () => {
     server.use(
       http.get(`${API_BASE_URL}/api/health`, () => HttpResponse.error()),
+    )
+
+    renderApp()
+
+    await waitFor(() =>
+      expect(screen.getByTestId('health-status')).toHaveTextContent('Backend unreachable'),
+    )
+  })
+
+  it('shows an unreachable message when the backend responds with a non-2xx status', async () => {
+    server.use(
+      http.get(`${API_BASE_URL}/api/health`, () => new HttpResponse(null, { status: 500 })),
     )
 
     renderApp()

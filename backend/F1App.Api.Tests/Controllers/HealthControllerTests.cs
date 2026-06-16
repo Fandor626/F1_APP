@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using F1App.Api.Controllers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
@@ -23,7 +25,13 @@ public class HealthControllerTests : IClassFixture<WebApplicationFactory<Program
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("\"status\":\"ok\"", body);
+
+        // Case-sensitive key lookup: TryGetProperty does NOT ignore case, so this
+        // actually verifies the camelCase policy — unlike deserializing into a
+        // record, which matches property names case-insensitively by default.
+        using var json = JsonDocument.Parse(body);
+        Assert.True(json.RootElement.TryGetProperty("status", out var statusProperty));
+        Assert.Equal("ok", statusProperty.GetString());
     }
 
     [Fact]
@@ -31,11 +39,9 @@ public class HealthControllerTests : IClassFixture<WebApplicationFactory<Program
     {
         var client = _factory.CreateClient();
 
-        var result = await client.GetFromJsonAsync<HealthResponseDto>("/api/health");
+        var result = await client.GetFromJsonAsync<HealthResponse>("/api/health");
 
         Assert.NotNull(result);
         Assert.Equal("ok", result!.Status);
     }
-
-    private sealed record HealthResponseDto(string Status);
 }

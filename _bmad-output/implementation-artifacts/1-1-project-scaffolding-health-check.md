@@ -4,7 +4,7 @@ baseline_commit: NO_VCS
 
 # Story 1.1: Project Scaffolding & Health Check
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -52,6 +52,19 @@ so that all later feature work has a working foundation to build on.
   - [x] `git init` at repo root — repo was already initialized (with a commit and a GitHub remote) outside this workflow partway through the session; `git init` safely no-op'd (reinit preserves history, confirmed via `git fsck`)
   - [x] Root `.gitignore` covering `node_modules/`, `bin/`, `obj/`, `.env.local`, `appsettings.Development.json`
   - [x] Confirm final tree matches architecture's Complete Project Tree (see Project Structure Notes for one resolved discrepancy)
+
+### Review Findings
+
+- [x] [Review][Patch] Backend doesn't actually run on `localhost:5000` as AC2 requires [backend/F1App.Api/Properties/launchSettings.json, backend/F1App.Api/F1App.Api.http] — fixed: both launch profiles and the `.http` scratch file now point at port 5000; re-verified with a plain `dotnet run` (no manual override)
+- [x] [Review][Patch] `app.UseHttpsRedirection()` runs before `app.UseCors(...)` — redirect responses lack CORS headers [backend/F1App.Api/Program.cs] — fixed: `UseCors` now runs before `UseHttpsRedirection`
+- [x] [Review][Patch] Undefined `VITE_API_BASE_URL` silently builds a bogus relative-URL fetch instead of failing clearly [frontend/src/shared/api/health.ts] — fixed: throws a clear error instead
+- [x] [Review][Patch] Brittle substring-based JSON assertion in `HealthControllerTests` [backend/F1App.Api.Tests/Controllers/HealthControllerTests.cs] — fixed: replaced with a case-sensitive `JsonDocument` property check (kept the casing verification, removed the brittleness — deserializing into a record alone wouldn't catch a casing regression, since property matching is case-insensitive by default)
+- [x] [Review][Patch] Duplicate shadow DTO (`HealthResponseDto`) instead of referencing the real `HealthResponse` [backend/F1App.Api.Tests/Controllers/HealthControllerTests.cs] — fixed: test now references `F1App.Api.Controllers.HealthResponse` directly
+- [x] [Review][Patch] `HealthController.Get()` returns `IActionResult` instead of `ActionResult<HealthResponse>`, losing OpenAPI schema fidelity [backend/F1App.Api/Controllers/HealthController.cs] — fixed
+- [x] [Review][Patch] Missing test coverage for the non-2xx HTTP failure path in `fetchHealth` (only network-level failure is tested) [frontend/src/App.test.tsx] — fixed: added a 500-response test case
+- [x] [Review][Patch] No startup warning when `AllowedOrigins` resolves to an empty array [backend/F1App.Api/Program.cs] — fixed: logs a warning at startup
+- [x] [Review][Defer] Frontend health-check fetch has no timeout/`AbortController` [frontend/src/shared/api/health.ts] — deferred, code is explicitly throwaway (replaced in Story 1.2); apply the pattern to real TanStack Query calls going forward instead
+- [x] [Review][Defer] Production-environment `AllowedOrigins` not yet decided in `appsettings.json` [backend/F1App.Api/appsettings.json] — deferred, pre-existing architecture gap, no non-POC CORS origin has been decided yet
 
 ## Dev Notes
 
@@ -131,6 +144,16 @@ Claude Sonnet 4.6
 - `frontend/src/features/{calendar,live-race,standings,profiles,fan-engagement}/` (empty, scaffolded for later stories)
 - `frontend/src/shared/{components,hooks,utils}/` (empty, scaffolded for later stories)
 
+**Modified (review patches):**
+- `backend/F1App.Api/Properties/launchSettings.json` — port 5032 → 5000
+- `backend/F1App.Api/F1App.Api.http` — port + stale `/weatherforecast` → `/api/health`
+- `backend/F1App.Api/Program.cs` — CORS/HTTPS-redirect ordering, empty-`AllowedOrigins` warning log
+- `backend/F1App.Api/Controllers/HealthController.cs` — `ActionResult<HealthResponse>` return type
+- `backend/F1App.Api.Tests/Controllers/HealthControllerTests.cs` — case-sensitive JSON assertion, removed duplicate DTO
+- `frontend/src/shared/api/health.ts` — guard for missing `VITE_API_BASE_URL`
+- `frontend/src/App.test.tsx` — added non-2xx failure-path test
+- `_bmad-output/implementation-artifacts/deferred-work.md` (new)
+
 **Modified:**
 - `_bmad-output/implementation-artifacts/1-1-project-scaffolding-health-check.md` (this file)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (status tracking)
@@ -138,3 +161,4 @@ Claude Sonnet 4.6
 ## Change Log
 
 - 2026-06-16: Frontend and backend scaffolded, `/api/health` round trip implemented and verified (browser + curl + automated tests), repo hygiene completed (`.gitignore`, confirmed pre-existing git history intact). All 5 tasks complete, all ACs satisfied. Status → review.
+- 2026-06-16: Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) found 0 decision-needed, 8 patch, 2 defer, 4 dismissed. All 8 patches applied and re-verified (including a real AC2 violation: backend was running on port 5032, not 5000). Status → done.

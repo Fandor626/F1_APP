@@ -6,9 +6,12 @@ const HealthResponseSchema = z.object({
   status: z.string(),
 })
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined
 
 async function fetchHealth() {
+  if (!API_BASE_URL) {
+    throw new Error('VITE_API_BASE_URL is not set — copy .env.example to .env.local')
+  }
   const response = await fetch(`${API_BASE_URL}/api/health`)
   if (!response.ok) {
     throw new Error(`Health check failed: ${response.status}`)

@@ -1,0 +1,4 @@
+## Deferred from: code review of story-1-1 (2026-06-16)
+
+- **Frontend health-check fetch has no timeout/`AbortController`** [frontend/src/shared/api/health.ts] — a hung connection leaves the UI on "Checking backend…" indefinitely. Not fixed now because this exact code is explicitly throwaway scaffolding (replaced by the real Calendar page in Story 1.2). Apply a timeout/abort pattern to the real TanStack Query calls introduced from Story 1.2 onward.
+- **Production-environment `AllowedOrigins` not yet decided** [backend/F1App.Api/appsettings.json] — the committed (non-Development) config has no `AllowedOrigins`, so any non-Development environment currently resolves to an empty CORS allow-list. Pre-existing architecture gap: no non-POC CORS origin has been decided yet. Revisit when deployment (Vercel/Render) origins are finalized.

@@ -7,7 +7,7 @@ namespace F1App.Api.Controllers;
 public class HealthController : ControllerBase
 {
     [HttpGet]
-    public IActionResult Get() => Ok(new HealthResponse("ok"));
+    public ActionResult<HealthResponse> Get() => Ok(new HealthResponse("ok"));
 }
 
 public record HealthResponse(string Status);

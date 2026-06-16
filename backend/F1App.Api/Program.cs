@@ -25,15 +25,25 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+if (allowedOrigins.Length == 0)
+{
+    app.Logger.LogWarning(
+        "AllowedOrigins is empty — CORS will block every cross-origin request. " +
+        "Check that appsettings.Development.json (gitignored) exists and defines AllowedOrigins.");
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
-
+// CORS must run before HTTPS redirection — a redirect response carries no CORS
+// headers, so a cross-origin request hitting the HTTP endpoint first would be
+// blocked by the browser instead of transparently following the redirect.
 app.UseCors(FrontendDevCorsPolicy);
+
+app.UseHttpsRedirection();
 
 app.MapControllers();
 
