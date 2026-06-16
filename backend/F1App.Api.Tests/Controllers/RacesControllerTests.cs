@@ -89,6 +89,12 @@ public class RacesControllerTests : IClassFixture<WebApplicationFactory<Program>
         ergastClient
             .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08", "First Race") }));
+        ergastClient
+            .Setup(c => c.GetCircuitResultsAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        ergastClient
+            .Setup(c => c.GetCurrentDriverStandingsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
 
         var client = _factory.WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
@@ -102,6 +108,42 @@ public class RacesControllerTests : IClassFixture<WebApplicationFactory<Program>
         Assert.NotNull(detail);
         Assert.Equal("First Race", detail!.RaceName);
         Assert.Equal(["Race"], detail.Sessions.Select(s => s.Name));
+    }
+
+    [Fact]
+    public async Task GetDetail_ReturnsContextualDataAsCamelCaseJsonAndOmitsNullPriorYearWinner()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08", "First Race") }));
+        ergastClient
+            .Setup(c => c.GetCircuitResultsAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        ergastClient
+            .Setup(c => c.GetCurrentDriverStandingsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new ErgastDriverStandingDto("1", "312", "10", new ErgastDriverDto("norris", "Lando", "Norris"), [new ErgastConstructorDto("mclaren", "McLaren")]),
+                new ErgastDriverStandingDto("2", "289", "8", new ErgastDriverDto("verstappen", "Max", "Verstappen"), [new ErgastConstructorDto("red_bull", "Red Bull Racing")]),
+            ]);
+
+        var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddScoped<IErgastClient>(_ => ergastClient.Object)))
+            .CreateClient();
+
+        var response = await client.GetAsync("/api/races/1");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain("\"priorYearWinner\"", body);
+        Assert.Contains("\"championshipDelta\"", body);
+
+        var detail = await response.Content.ReadFromJsonAsync<RaceWeekendDetail>();
+        Assert.Null(detail!.PriorYearWinner);
+        Assert.NotNull(detail.ChampionshipDelta);
+        Assert.Equal("Norris", detail.ChampionshipDelta!.LeaderName);
+        Assert.Equal("Verstappen", detail.ChampionshipDelta!.RunnerUpName);
+        Assert.Equal(23, detail.ChampionshipDelta!.PointsGap);
     }
 
     [Fact]

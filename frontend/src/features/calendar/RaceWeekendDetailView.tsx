@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useRaceDetail } from '../../shared/api/ergast'
 import { CountryFlag } from '../../shared/components/CountryFlag'
 import { formatSessionTime } from '../../shared/utils/dateUtils'
+import { ContextualData } from './ContextualData'
 
 function SessionsSkeleton() {
   return (
@@ -58,6 +59,8 @@ export function RaceWeekendDetailView() {
               </li>
             ))}
           </ul>
+
+          <ContextualData priorYearWinner={data.priorYearWinner} championshipDelta={data.championshipDelta} />
         </>
       )}
     </div>

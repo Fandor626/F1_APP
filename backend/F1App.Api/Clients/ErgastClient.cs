@@ -32,4 +32,15 @@ public class ErgastClient(HttpClient httpClient) : IErgastClient
             ? []
             : response.MRData.StandingsTable.StandingsLists[0].ConstructorStandings;
     }
+
+    public async Task<IReadOnlyList<ErgastResultDto>> GetCircuitResultsAsync(int season, string circuitId, CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastRaceResultResponseDto>(
+            $"{season}/circuits/{circuitId}/results/1.json", cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for {circuitId} results in {season}.");
+
+        return response.MRData.RaceTable.Races.Count == 0
+            ? []
+            : response.MRData.RaceTable.Races[0].Results;
+    }
 }

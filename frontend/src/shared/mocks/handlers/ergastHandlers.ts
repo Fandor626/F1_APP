@@ -52,6 +52,8 @@ export const sampleRaceDetailsByRound: Record<number, RaceWeekendDetail> = {
       { name: 'Qualifying', start: '2026-03-07T17:00:00+00:00' },
       { name: 'Race', start: '2026-03-08T18:00:00+00:00' },
     ],
+    priorYearWinner: { driverName: 'Oscar Piastri', constructorName: 'McLaren', time: '1:35:39.435' },
+    championshipDelta: { leaderName: 'Norris', runnerUpName: 'Verstappen', pointsGap: 23 },
   },
   2: {
     season: 2026,
@@ -66,6 +68,7 @@ export const sampleRaceDetailsByRound: Record<number, RaceWeekendDetail> = {
       { name: 'Qualifying', start: '2026-03-14T19:00:00+00:00' },
       { name: 'Race', start: '2026-03-15T20:00:00+00:00' },
     ],
+    championshipDelta: { leaderName: 'Norris', runnerUpName: 'Verstappen', pointsGap: 23 },
   },
 }
 

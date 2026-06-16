@@ -43,6 +43,18 @@ const SessionSchema = z.object({
   start: z.string(),
 })
 
+const PriorYearWinnerSchema = z.object({
+  driverName: z.string(),
+  constructorName: z.string(),
+  time: z.string().optional(),
+})
+
+const ChampionshipDeltaSchema = z.object({
+  leaderName: z.string(),
+  runnerUpName: z.string(),
+  pointsGap: z.number(),
+})
+
 const RaceWeekendDetailSchema = z.object({
   season: z.number(),
   round: z.number(),
@@ -50,9 +62,13 @@ const RaceWeekendDetailSchema = z.object({
   circuitName: z.string(),
   country: z.string(),
   sessions: z.array(SessionSchema),
+  priorYearWinner: PriorYearWinnerSchema.optional(),
+  championshipDelta: ChampionshipDeltaSchema.optional(),
 })
 
 export type Session = z.infer<typeof SessionSchema>
+export type PriorYearWinner = z.infer<typeof PriorYearWinnerSchema>
+export type ChampionshipDelta = z.infer<typeof ChampionshipDeltaSchema>
 export type RaceWeekendDetail = z.infer<typeof RaceWeekendDetailSchema>
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined

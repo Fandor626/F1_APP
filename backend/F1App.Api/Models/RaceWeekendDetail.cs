@@ -6,4 +6,6 @@ public record RaceWeekendDetail(
     string RaceName,
     string CircuitName,
     string Country,
-    IReadOnlyList<Session> Sessions);
+    IReadOnlyList<Session> Sessions,
+    CircuitPriorWinner? PriorYearWinner,
+    ChampionshipDelta? ChampionshipDelta);

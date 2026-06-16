@@ -37,6 +37,10 @@
 generated: 2026-06-16
 last_updated: 2026-06-16
 
+# Note: Story 1.5 was created via the formal create-story workflow (unlike
+# 1.2-1.4, which were implemented directly) — it has a full story-context
+# file at 1-5-contextual-detail-data-last-years-winner-championship-delta.md.
+
 # Note: Stories 1.2, 1.3, and 1.4 were implemented directly (no formal story-context
 # file or code-review cycle) at the user's request, bypassing the usual
 # create-story / dev-story / code-review BMad cycle. See git history for
@@ -52,7 +56,7 @@ development_status:
   1-2-season-race-list: done
   1-3-race-weekend-card-championship-snippet: done
   1-4-race-weekend-detail-view-sessions: done
-  1-5-contextual-detail-data-last-years-winner-championship-delta: backlog
+  1-5-contextual-detail-data-last-years-winner-championship-delta: review
   1-6-timezone-toggle: backlog
   1-7-pre-race-win-probability-widget: backlog
   epic-1-retrospective: optional

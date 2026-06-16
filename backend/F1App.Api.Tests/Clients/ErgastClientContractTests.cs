@@ -155,5 +155,65 @@ public class ErgastClientContractTests : IDisposable
         Assert.Equal("262", standing.Points);
     }
 
+    [Fact]
+    public async Task GetCircuitResultsAsync_ParsesWinnerFromFirstRace()
+    {
+        _server
+            .Given(Request.Create().WithPath("/2025/circuits/bahrain/results/1.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    RaceTable = new
+                    {
+                        Races = new[]
+                        {
+                            new
+                            {
+                                Results = new[]
+                                {
+                                    new
+                                    {
+                                        Driver = new { driverId = "piastri", givenName = "Oscar", familyName = "Piastri" },
+                                        Constructor = new { constructorId = "mclaren", name = "McLaren" },
+                                        Time = new { millis = "5739435", time = "1:35:39.435" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var results = await client.GetCircuitResultsAsync(2025, "bahrain", CancellationToken.None);
+
+        var winner = Assert.Single(results);
+        Assert.Equal("Oscar", winner.Driver.GivenName);
+        Assert.Equal("Piastri", winner.Driver.FamilyName);
+        Assert.Equal("McLaren", winner.Constructor.Name);
+        Assert.Equal("1:35:39.435", winner.Time?.Time);
+    }
+
+    [Fact]
+    public async Task GetCircuitResultsAsync_ReturnsEmptyListWhenNoRaceAtCircuitThatSeason()
+    {
+        _server
+            .Given(Request.Create().WithPath("/2025/circuits/las_vegas/results/1.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { RaceTable = new { Races = Array.Empty<object>() } },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var results = await client.GetCircuitResultsAsync(2025, "las_vegas", CancellationToken.None);
+
+        Assert.Empty(results);
+    }
+
     public void Dispose() => _server.Stop();
 }
