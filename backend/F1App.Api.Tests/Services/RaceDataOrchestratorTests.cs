@@ -4,6 +4,7 @@ using F1App.Api.Hubs;
 using F1App.Api.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -27,6 +28,13 @@ public class RaceDataOrchestratorTests
         mockClients.Setup(c => c.Group("race")).Returns(mockProxy.Object);
 
         var mockOpenF1 = new Mock<IOpenF1Client>();
+
+        var mockScope = new Mock<IServiceScope>();
+        var mockSp = new Mock<IServiceProvider>();
+        mockScope.Setup(s => s.ServiceProvider).Returns(mockSp.Object);
+        var mockScopeFactory = new Mock<IServiceScopeFactory>();
+        mockScopeFactory.Setup(f => f.CreateScope()).Returns(mockScope.Object);
+
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -37,6 +45,7 @@ public class RaceDataOrchestratorTests
         return new RaceDataOrchestrator(
             mockHub.Object,
             mockOpenF1.Object,
+            mockScopeFactory.Object,
             config,
             timeProvider ?? TimeProvider.System,
             NullLogger<RaceDataOrchestrator>.Instance);

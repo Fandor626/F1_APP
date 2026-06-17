@@ -1,15 +1,18 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using F1App.Api.Clients;
 using F1App.Api.Dtos.OpenF1;
 using F1App.Api.Hubs;
 using F1App.Api.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace F1App.Api.Services;
 
 public class RaceDataOrchestrator(
     IHubContext<RaceHub> hubContext,
     IOpenF1Client openF1Client,
+    IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
     TimeProvider timeProvider,
     ILogger<RaceDataOrchestrator> logger) : BackgroundService
@@ -29,17 +32,74 @@ public class RaceDataOrchestrator(
     private DateTimeOffset _lastIntervalPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastLapPoll = DateTimeOffset.MinValue;
 
+    // Race weekend gate — cached for 1h to avoid hammering Ergast
+    private bool _raceWeekendActive;
+    private DateTimeOffset _raceWeekendCheckExpiry = DateTimeOffset.MinValue;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await InitialiseDriverInfoAsync(stoppingToken);
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            if (!await IsRaceWeekendActiveAsync(stoppingToken))
+            {
+                logger.LogInformation("RaceDataOrchestrator: not a race weekend — sleeping 1h");
+                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                continue;
+            }
 
-        await Task.WhenAll(
-            RunLoopAsync("PositionPoller",  PollPositionAsync,         stoppingToken),
-            RunLoopAsync("IntervalPoller",  PollIntervalAsync,         stoppingToken),
-            RunLoopAsync("StintsPoller",    PollStintsAsync,           stoppingToken),
-            RunLoopAsync("LapsPoller",      PollLapsAsync,             stoppingToken),
-            RunLoopAsync("PublishLoop",     PublishSnapshotLoopAsync,  stoppingToken)
-        );
+            await InitialiseDriverInfoAsync(stoppingToken);
+
+            // Run all polling loops for up to 24h, then re-evaluate race weekend status.
+            // sessionCts is linked to stoppingToken so app shutdown stops all loops immediately.
+            using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+            sessionCts.CancelAfter(TimeSpan.FromHours(24));
+
+            await Task.WhenAll(
+                RunLoopAsync("PositionPoller",  PollPositionAsync,         sessionCts.Token),
+                RunLoopAsync("IntervalPoller",  PollIntervalAsync,         sessionCts.Token),
+                RunLoopAsync("StintsPoller",    PollStintsAsync,           sessionCts.Token),
+                RunLoopAsync("LapsPoller",      PollLapsAsync,             sessionCts.Token),
+                RunLoopAsync("PublishLoop",     PublishSnapshotLoopAsync,  sessionCts.Token)
+            );
+        }
+    }
+
+    private async Task<bool> IsRaceWeekendActiveAsync(CancellationToken ct)
+    {
+        var now = timeProvider.GetUtcNow();
+        if (now < _raceWeekendCheckExpiry)
+            return _raceWeekendActive;
+
+        try
+        {
+            // IErgastClient is scoped (typed HttpClient); create a short-lived scope for this check
+            using var scope = scopeFactory.CreateScope();
+            var ergast = scope.ServiceProvider.GetRequiredService<IErgastClient>();
+            var raceTable = await ergast.GetCurrentSeasonScheduleAsync(ct);
+            var today = now.UtcDateTime.Date;
+
+            _raceWeekendActive = raceTable.Races.Any(race =>
+            {
+                var raceDate = DateTime.ParseExact(race.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture).Date;
+                // Weekend starts at FP1 day; fall back to 2 days before race if no FP1 data yet
+                var weekendStart = race.FirstPractice is not null
+                    ? DateTime.ParseExact(race.FirstPractice.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture).Date
+                    : raceDate.AddDays(-2);
+                return today >= weekendStart && today <= raceDate;
+            });
+
+            _raceWeekendCheckExpiry = now.AddHours(1);
+            logger.LogInformation("RaceDataOrchestrator: race weekend active={Active}", _raceWeekendActive);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Fail-open: if we can't determine the schedule, assume a race might be on
+            logger.LogWarning(ex, "RaceDataOrchestrator: failed to check race weekend — assuming active");
+            _raceWeekendActive = true;
+            _raceWeekendCheckExpiry = now.AddMinutes(5);
+        }
+
+        return _raceWeekendActive;
     }
 
     private async Task InitialiseDriverInfoAsync(CancellationToken ct)
@@ -58,19 +118,30 @@ public class RaceDataOrchestrator(
 
     private async Task RunLoopAsync(string name, Func<CancellationToken, Task> loop, CancellationToken ct)
     {
+        var backoff = TimeSpan.FromSeconds(1);
         while (!ct.IsCancellationRequested)
         {
             try
             {
                 await loop(ct);
+                backoff = TimeSpan.FromSeconds(1); // reset on clean exit
             }
             catch (OperationCanceledException)
             {
-                break;
+                return;
+            }
+            catch (HttpRequestException ex) when ((int?)ex.StatusCode == 429)
+            {
+                logger.LogWarning("RaceDataOrchestrator: {LoopName} rate-limited (429) — pausing 60s", name);
+                try { await Task.Delay(TimeSpan.FromSeconds(60), ct); }
+                catch (OperationCanceledException) { return; }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "RaceDataOrchestrator: {LoopName} crashed — restarting", name);
+                logger.LogError(ex, "RaceDataOrchestrator: {LoopName} crashed — retrying in {Backoff}", name, backoff);
+                try { await Task.Delay(backoff, ct); }
+                catch (OperationCanceledException) { return; }
+                backoff = backoff < TimeSpan.FromSeconds(60) ? backoff + backoff : TimeSpan.FromSeconds(60);
             }
         }
     }
