@@ -1,3 +1,9 @@
+## Deferred from: code review of 1-6-timezone-toggle (2026-06-17)
+
+- **ARIA semantics: `aria-pressed` siblings vs. `role="radiogroup"`** [TimezoneToggle.tsx] — two `aria-pressed` buttons don't communicate mutual exclusivity to assistive technology; `role="radiogroup"` + `role="radio"` children would be more correct. Best-practice improvement, not a correctness bug.
+- **DST edge case for track offset** [dateUtils.ts:34-46] — static UTC offset in the ISO string may be wrong if the backend uses the standard (non-DST) offset for a session that falls in a DST period. Upstream data quality concern; no fix possible without IANA timezone support.
+- **Null/invalid-date guard in `formatSessionTimeForMode`** [dateUtils.ts:41-46] — malformed ISO string produces `Invalid Date` silently. Pre-existing concern; Zod schema at the API boundary guards against this in practice.
+
 ## Deferred from: code review of story-1-5 (2026-06-17)
 
 - **`PointsGap` can be zero when top-two standings are tied on points** [RaceScheduleService.cs, GetChampionshipDeltaAsync] — Ergast data quality edge case; zero gap is technically correct but odd-looking. Consider `.ToString("F0")` formatting or a guard if it becomes a UX issue.

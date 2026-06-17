@@ -12,6 +12,17 @@ const SESSION_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
 })
 
+// timeZone:'UTC' here is intentional — the caller pre-shifts the timestamp by
+// the circuit's UTC offset, so displaying at UTC shows the circuit wall-clock time.
+const TRACK_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'UTC',
+})
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 export function formatRaceTime(iso: string): string {
@@ -20,6 +31,20 @@ export function formatRaceTime(iso: string): string {
 
 export function formatSessionTime(iso: string): string {
   return SESSION_TIME_FORMATTER.format(new Date(iso))
+}
+
+function parseOffsetMinutes(iso: string): number {
+  const m = iso.match(/([+-])(\d{2}):(\d{2})$/)
+  if (!m) return 0
+  const sign = m[1] === '+' ? 1 : -1
+  return sign * (Number(m[2]) * 60 + Number(m[3]))
+}
+
+export function formatSessionTimeForMode(iso: string, mode: 'local' | 'track'): string {
+  const date = new Date(iso)
+  if (mode === 'local') return SESSION_TIME_FORMATTER.format(date)
+  const offsetMs = parseOffsetMinutes(iso) * 60_000
+  return TRACK_TIME_FORMATTER.format(new Date(date.getTime() + offsetMs))
 }
 
 function startOfDay(date: Date): Date {

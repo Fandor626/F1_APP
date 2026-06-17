@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useRaceDetail } from '../../shared/api/ergast'
 import { CountryFlag } from '../../shared/components/CountryFlag'
-import { formatSessionTime } from '../../shared/utils/dateUtils'
+import { formatSessionTimeForMode } from '../../shared/utils/dateUtils'
 import { ContextualData } from './ContextualData'
+import { TimezoneToggle } from './TimezoneToggle'
 
 function SessionsSkeleton() {
   return (
@@ -20,6 +22,7 @@ function SessionsSkeleton() {
 export function RaceWeekendDetailView() {
   const { round } = useParams<{ round: string }>()
   const { data, isPending, isError } = useRaceDetail(Number(round))
+  const [tzMode, setTzMode] = useState<'local' | 'track'>('local')
 
   return (
     <div className="mx-auto max-w-[1100px] px-7 py-8 pb-16">
@@ -45,9 +48,12 @@ export function RaceWeekendDetailView() {
           </div>
           <p className="mb-7 text-[13px] text-text-secondary">{data.circuitName}</p>
 
-          <h2 className="mb-3 text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
-            Sessions
-          </h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
+              Sessions
+            </h2>
+            <TimezoneToggle mode={tzMode} onToggle={() => setTzMode(m => (m === 'local' ? 'track' : 'local'))} />
+          </div>
           <ul className="flex flex-col gap-2">
             {data.sessions.map((session) => (
               <li
@@ -55,7 +61,7 @@ export function RaceWeekendDetailView() {
                 className="flex items-center justify-between rounded-lg border border-border-soft bg-bg-card px-[22px] py-3"
               >
                 <span className="text-[13px] font-semibold text-text-primary">{session.name}</span>
-                <span className="text-[13px] text-text-secondary">{formatSessionTime(session.start)}</span>
+                <span className="text-[13px] text-text-secondary">{formatSessionTimeForMode(session.start, tzMode)}</span>
               </li>
             ))}
           </ul>

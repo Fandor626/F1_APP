@@ -314,4 +314,34 @@ public class RaceScheduleServiceTests
 
         Assert.Null(detail!.ChampionshipDelta);
     }
+
+    [Fact]
+    public async Task GetRaceDetailAsync_SessionsConvertToCircuitLocalTime()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceTableDto("2026",
+            [
+                new ErgastRaceDto(
+                    "2026", "1", "Bahrain Grand Prix",
+                    new ErgastCircuitDto("bahrain", "Bahrain International Circuit", new ErgastLocationDto("Sakhir", "Bahrain")),
+                    "2026-03-08", "13:00:00Z",
+                    new ErgastSessionDto("2026-03-06", "01:00:00Z"),
+                    null, null, null, null, null),
+            ]));
+        ergastClient
+            .Setup(c => c.GetCircuitResultsAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+
+        var detail = await service.GetRaceDetailAsync(1, CancellationToken.None);
+
+        Assert.NotNull(detail);
+        var fp1 = detail!.Sessions.First(s => s.Name == "FP1");
+        // Bahrain is UTC+3; 01:00 UTC → 04:00 local, offset +03:00
+        Assert.Equal(TimeSpan.FromHours(3), fp1.Start.Offset);
+        Assert.Equal(4, fp1.Start.Hour);
+    }
 }

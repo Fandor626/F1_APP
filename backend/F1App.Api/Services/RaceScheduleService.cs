@@ -10,6 +10,40 @@ public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache,
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(24);
 
+    // IANA timezone IDs for each Ergast circuitId. Used by BuildSessions to
+    // convert UTC session times to circuit-local DateTimeOffset values so the
+    // frontend track-time toggle has a non-zero offset to work with.
+    // StringComparer.OrdinalIgnoreCase guards against inconsistent casing from
+    // the Ergast/Jolpica API.
+    private static readonly Dictionary<string, string> CircuitTimezones =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["bahrain"]       = "Asia/Bahrain",
+            ["jeddah"]        = "Asia/Riyadh",
+            ["albert_park"]   = "Australia/Melbourne",
+            ["suzuka"]        = "Asia/Tokyo",
+            ["shanghai"]      = "Asia/Shanghai",
+            ["miami"]         = "America/New_York",
+            ["imola"]         = "Europe/Rome",
+            ["monaco"]        = "Europe/Monaco",
+            ["villeneuve"]    = "America/Toronto",
+            ["catalunya"]     = "Europe/Madrid",
+            ["red_bull_ring"] = "Europe/Vienna",
+            ["silverstone"]   = "Europe/London",
+            ["hungaroring"]   = "Europe/Budapest",
+            ["spa"]           = "Europe/Brussels",
+            ["zandvoort"]     = "Europe/Amsterdam",
+            ["monza"]         = "Europe/Rome",
+            ["baku"]          = "Asia/Baku",
+            ["marina_bay"]    = "Asia/Singapore",
+            ["americas"]      = "America/Chicago",
+            ["rodriguez"]     = "America/Mexico_City",
+            ["interlagos"]    = "America/Sao_Paulo",
+            ["las_vegas"]     = "America/Los_Angeles",
+            ["losail"]        = "Asia/Qatar",
+            ["yas_marina"]    = "Asia/Dubai",
+        };
+
     // Historical race results are immutable once published — 7 days per
     // architecture's TTL tier table (vs. the 24h schedule cache above, which
     // tracks the mutable current-season calendar).
@@ -132,11 +166,13 @@ public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache,
     {
         var sessions = new List<Session>();
 
+        var circuitId = race.Circuit.CircuitId;
+
         void AddIfPresent(string name, ErgastSessionDto? session)
         {
             if (session is not null)
             {
-                sessions.Add(new Session(name, CombineDateAndTime(session.Date, session.Time)));
+                sessions.Add(new Session(name, CombineDateAndTime(session.Date, session.Time, circuitId)));
             }
         }
 
@@ -146,14 +182,34 @@ public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache,
         AddIfPresent("Sprint Qualifying", race.SprintQualifying);
         AddIfPresent("Sprint", race.Sprint);
         AddIfPresent("Qualifying", race.Qualifying);
-        sessions.Add(new Session("Race", CombineDateAndTime(race.Date, race.Time)));
+        sessions.Add(new Session("Race", CombineDateAndTime(race.Date, race.Time, circuitId)));
 
         return sessions.OrderBy(s => s.Start).ToList();
     }
 
-    private static DateTimeOffset CombineDateAndTime(string date, string? time) =>
-        DateTimeOffset.Parse(
+    // Parses Ergast's UTC date+time strings and optionally converts to the
+    // circuit's local DateTimeOffset. Without conversion the offset is always
+    // +00:00 (Ergast emits UTC); the frontend track-time toggle needs a
+    // non-zero offset to show the correct circuit wall-clock time.
+    private static DateTimeOffset CombineDateAndTime(string date, string? time, string? circuitId = null)
+    {
+        var utc = DateTimeOffset.Parse(
             $"{date}T{time ?? "00:00:00Z"}",
             CultureInfo.InvariantCulture,
             DateTimeStyles.AssumeUniversal);
+
+        if (circuitId is not null && CircuitTimezones.TryGetValue(circuitId, out var tzId))
+        {
+            try
+            {
+                return TimeZoneInfo.ConvertTime(utc, TimeZoneInfo.FindSystemTimeZoneById(tzId));
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                return utc;
+            }
+        }
+
+        return utc;
+    }
 }
