@@ -64,7 +64,7 @@ development_status:
 
   epic-2: in-progress
   2-1-live-gap-list: done
-  2-2-live-tyre-tracker: backlog
+  2-2-live-tyre-tracker: done
   2-3-live-lap-time-chart: backlog
   2-4-live-championship-impact-tracker: backlog
   2-5-fallback-to-last-race: backlog

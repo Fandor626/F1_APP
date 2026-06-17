@@ -27,4 +27,18 @@ public class OpenF1Client(HttpClient httpClient) : IOpenF1Client
     {
         return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1DriverInfoDto>>("drivers?session_key=latest", ct) ?? [];
     }
+
+    public async Task<IReadOnlyList<OpenF1StintDto>> GetLatestStintsAsync(CancellationToken ct)
+    {
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1StintDto>>("stints?session_key=latest", ct) ?? [];
+    }
+
+    public async Task<IReadOnlyList<OpenF1LapDto>> GetLatestLapsAsync(DateTimeOffset since, CancellationToken ct)
+    {
+        var url = since == DateTimeOffset.MinValue
+            ? "laps?session_key=latest"
+            : $"laps?session_key=latest&date_start>{since:yyyy-MM-ddTHH:mm:ss.fff}";
+
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1LapDto>>(url, ct) ?? [];
+    }
 }

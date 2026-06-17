@@ -102,4 +102,49 @@ describe('GapList', () => {
 
     expect(screen.getByText('◌ Reconnecting…')).toBeInTheDocument()
   })
+
+  it('shows tyre compound circle when compound data is present', () => {
+    useLiveRaceStore.setState({
+      drivers: {
+        '33': makeDriver(33, 1, { tyreCompound: 'SOFT' }),
+      },
+    })
+    render(<GapList />)
+    const tyreCircle = screen.getByTestId('tyre-compound')
+    expect(tyreCircle).toBeInTheDocument()
+    // SOFT = #E8002D red
+    expect(tyreCircle).toHaveStyle({ backgroundColor: 'rgb(232, 0, 45)' })
+  })
+
+  it('shows stint laps when both compound and lap data are present', () => {
+    useLiveRaceStore.setState({
+      drivers: {
+        '33': makeDriver(33, 1, { tyreCompound: 'MEDIUM', stintLaps: 12 }),
+      },
+    })
+    render(<GapList />)
+    expect(screen.getByTestId('stint-laps').textContent).toBe('12')
+  })
+
+  it('hides tyre section when compound is null', () => {
+    useLiveRaceStore.setState({
+      drivers: {
+        '33': makeDriver(33, 1, { tyreCompound: null, stintLaps: null }),
+      },
+    })
+    render(<GapList />)
+    expect(screen.queryByTestId('tyre-compound')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('stint-laps')).not.toBeInTheDocument()
+  })
+
+  it('hides stint laps when lap count is null even if compound is set', () => {
+    useLiveRaceStore.setState({
+      drivers: {
+        '33': makeDriver(33, 1, { tyreCompound: 'HARD', stintLaps: null }),
+      },
+    })
+    render(<GapList />)
+    expect(screen.getByTestId('tyre-compound')).toBeInTheDocument()
+    expect(screen.queryByTestId('stint-laps')).not.toBeInTheDocument()
+  })
 })

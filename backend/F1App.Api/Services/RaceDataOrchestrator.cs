@@ -19,19 +19,26 @@ public class RaceDataOrchestrator(
 
     internal readonly ConcurrentDictionary<int, OpenF1PositionDto> _latestPositions = new();
     internal readonly ConcurrentDictionary<int, OpenF1IntervalDto> _latestIntervals = new();
+    // Latest stint per driver (by highest StintNumber) — full refresh each poll
+    internal readonly ConcurrentDictionary<int, OpenF1StintDto> _latestStints = new();
+    // Maximum lap_number seen per driver — only ever increases
+    internal readonly ConcurrentDictionary<int, int> _driverCurrentLap = new();
     internal IReadOnlyDictionary<int, OpenF1DriverInfoDto> _driverInfo = new Dictionary<int, OpenF1DriverInfoDto>();
 
     private DateTimeOffset _lastPositionPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastIntervalPoll = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastLapPoll = DateTimeOffset.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await InitialiseDriverInfoAsync(stoppingToken);
 
         await Task.WhenAll(
-            RunLoopAsync("PositionPoller", PollPositionAsync, stoppingToken),
-            RunLoopAsync("IntervalPoller", PollIntervalAsync, stoppingToken),
-            RunLoopAsync("PublishLoop", PublishSnapshotLoopAsync, stoppingToken)
+            RunLoopAsync("PositionPoller",  PollPositionAsync,         stoppingToken),
+            RunLoopAsync("IntervalPoller",  PollIntervalAsync,         stoppingToken),
+            RunLoopAsync("StintsPoller",    PollStintsAsync,           stoppingToken),
+            RunLoopAsync("LapsPoller",      PollLapsAsync,             stoppingToken),
+            RunLoopAsync("PublishLoop",     PublishSnapshotLoopAsync,  stoppingToken)
         );
     }
 
@@ -106,6 +113,42 @@ public class RaceDataOrchestrator(
         }
     }
 
+    private async Task PollStintsAsync(CancellationToken ct)
+    {
+        var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            var stints = await openF1Client.GetLatestStintsAsync(ct);
+            // Full refresh: rebuild from the authoritative batch so session transitions
+            // (where StintNumber resets to 1) replace stale prior-session entries cleanly.
+            foreach (var (driverNum, latestStint) in stints
+                .GroupBy(s => s.DriverNumber)
+                .Select(g => (g.Key, g.MaxBy(s => s.StintNumber)!)))
+            {
+                _latestStints[driverNum] = latestStint;
+            }
+        }
+    }
+
+    private async Task PollLapsAsync(CancellationToken ct)
+    {
+        var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            var laps = await openF1Client.GetLatestLapsAsync(_lastLapPoll, ct);
+            if (laps.Count > 0)
+                _lastLapPoll = timeProvider.GetUtcNow();
+
+            foreach (var lap in laps)
+            {
+                _driverCurrentLap.AddOrUpdate(
+                    lap.DriverNumber,
+                    lap.LapNumber,
+                    (_, existing) => lap.LapNumber > existing ? lap.LapNumber : existing);
+            }
+        }
+    }
+
     private async Task PublishSnapshotLoopAsync(CancellationToken ct)
     {
         var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
@@ -135,6 +178,19 @@ public class RaceDataOrchestrator(
                 gap = gapIsStale ? null : interval.GapToCarAhead;
             }
 
+            string? tyreCompound = null;
+            int? stintLaps = null;
+
+            if (_latestStints.TryGetValue(driverNum, out var stint))
+            {
+                tyreCompound = stint.Compound;
+                if (_driverCurrentLap.TryGetValue(driverNum, out var currentLap))
+                {
+                    // Total tyre age = age when this set was new + laps completed in this stint
+                    stintLaps = stint.TyreAgeAtStart + Math.Max(0, currentLap - stint.LapStart + 1);
+                }
+            }
+
             _driverInfo.TryGetValue(driverNum, out var info);
 
             drivers.Add(new DriverState
@@ -146,6 +202,8 @@ public class RaceDataOrchestrator(
                 Position = pos.Position,
                 GapToCarAhead = gap,
                 GapIsStale = gapIsStale,
+                TyreCompound = tyreCompound,
+                StintLaps = stintLaps,
             });
         }
 

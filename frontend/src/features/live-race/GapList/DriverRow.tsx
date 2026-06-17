@@ -1,4 +1,5 @@
 import { useLiveRaceStore } from '../store/liveRaceStore'
+import { getTyreColour } from '../../../shared/utils/tyreUtils'
 
 interface DriverRowProps {
   driverId: string
@@ -49,6 +50,25 @@ export function DriverRow({ driverId }: DriverRowProps) {
       <span className="w-8 font-semibold text-[#eef0f3] shrink-0">
         {driver.driverCode}
       </span>
+      {driver.tyreCompound !== null ? (
+        <span className="flex items-center gap-1 shrink-0">
+          <span
+            className="rounded-full shrink-0"
+            style={{
+              width: 10,
+              height: 10,
+              backgroundColor: getTyreColour(driver.tyreCompound),
+            }}
+            data-testid="tyre-compound"
+            aria-label={driver.tyreCompound}
+          />
+          {driver.stintLaps !== null && (
+            <span className="text-[#9aa1ad] tabular-nums" data-testid="stint-laps">
+              {driver.stintLaps}
+            </span>
+          )}
+        </span>
+      ) : null}
       <span className="ml-auto tabular-nums">{gapDisplay}</span>
     </div>
   )

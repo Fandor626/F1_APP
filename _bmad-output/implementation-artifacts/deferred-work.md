@@ -1,3 +1,10 @@
+## Deferred from: code review of 2-2-live-tyre-tracker (2026-06-17)
+
+- **[D1] `_lastLapPoll` stamped with server wall clock instead of max `DateStart` from response** [`RaceDataOrchestrator.cs:140`] — pre-existing pattern used by `_lastPositionPoll` and `_lastIntervalPoll`; clock skew between server and OpenF1 could cause missed laps. Consider anchoring watermark to `laps.Max(l => l.DateStart)` in a future hardening pass.
+- **[D2] `stintLaps` transiently shows 0 immediately after a pit stop** [`RaceDataOrchestrator.cs`] — inherent timing gap: stints poller (10s) may see new stint before laps poller (5s) sees the first lap of the new stint; `Max(0, currentLap - LapStart + 1)` evaluates to 0 for ~5-10s. Acceptable for a polling-based display.
+- **[D3] No unit tests for `PollStintsAsync`/`PollLapsAsync` loop behaviour** [`RaceDataOrchestratorTests.cs`] — Task 5 scope was snapshot assembly tests only; the monotonic-guard logic and `_lastLapPoll` advancement are untested via poller-level tests. Add when adding broader orchestrator integration tests.
+- **[D4] No immediate first-fetch on startup; PeriodicTimer fires after first interval** — pre-existing pattern across all pollers; tyre data not available until 10s after start. Fine for POC; consider a separate `InitialiseStintsAsync` path if cold-start display time matters.
+
 ## Deferred from: code review of 2-1-live-gap-list (2026-06-17)
 
 - **[D1] Session transition: stale driver data persists in ConcurrentDictionaries** [`RaceDataOrchestrator.cs:20-21`] — `_latestPositions`/`_latestIntervals` never cleared when `session_key=latest` flips to a new session; retired drivers and stale positions accumulate. Story 2.5 scope.

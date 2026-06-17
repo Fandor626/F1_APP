@@ -48,6 +48,10 @@ public class RaceDataOrchestratorTests
     private static OpenF1IntervalDto MakeInterval(int driverNum, string? gap, DateTimeOffset date) =>
         new(driverNum, gap, date);
 
+    private static OpenF1StintDto MakeStint(int driverNum, int stintNum, int lapStart,
+        string compound, int tyreAgeAtStart = 0) =>
+        new(driverNum, stintNum, lapStart, null, compound, tyreAgeAtStart);
+
     [Fact]
     public void BuildSnapshot_EmptyPositions_ReturnsEmptyDriverList()
     {
@@ -164,5 +168,57 @@ public class RaceDataOrchestratorTests
 
         Assert.Equal("44", snapshot.Drivers[0].DriverCode);
         Assert.Equal("555555", snapshot.Drivers[0].TeamColour);
+    }
+
+    [Fact]
+    public void BuildSnapshot_WithStintData_PopulatesTyreCompound()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._latestStints[33] = MakeStint(33, 1, 1, "SOFT");
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal("SOFT", snapshot.Drivers[0].TyreCompound);
+    }
+
+    [Fact]
+    public void BuildSnapshot_WithStintAndLapData_PopulatesStintLaps()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._latestStints[33] = MakeStint(33, 2, 23, "MEDIUM", tyreAgeAtStart: 0);
+        sut._driverCurrentLap[33] = 35;
+
+        var snapshot = sut.BuildSnapshot();
+
+        // 0 + Max(0, 35 - 23 + 1) = 13
+        Assert.Equal(13, snapshot.Drivers[0].StintLaps);
+    }
+
+    [Fact]
+    public void BuildSnapshot_NoStintData_TyreFieldsNull()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Null(snapshot.Drivers[0].TyreCompound);
+        Assert.Null(snapshot.Drivers[0].StintLaps);
+    }
+
+    [Fact]
+    public void BuildSnapshot_StintWithNoLapData_StintLapsNull()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._latestStints[33] = MakeStint(33, 1, 1, "HARD");
+        // _driverCurrentLap NOT set
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal("HARD", snapshot.Drivers[0].TyreCompound);
+        Assert.Null(snapshot.Drivers[0].StintLaps);
     }
 }
