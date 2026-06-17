@@ -23,11 +23,11 @@ describe('ContextualData', () => {
 
   it('renders the championship delta with leader, runner-up, and points gap', () => {
     render(
-      <ContextualData championshipDelta={{ leaderName: 'Norris', runnerUpName: 'Verstappen', pointsGap: 23 }} />,
+      <ContextualData championshipDelta={{ leaderName: 'Lando Norris', runnerUpName: 'Max Verstappen', pointsGap: 23 }} />,
     )
 
-    expect(screen.getByText('Norris')).toBeInTheDocument()
-    expect(screen.getByText('Verstappen')).toBeInTheDocument()
+    expect(screen.getByText('Lando Norris')).toBeInTheDocument()
+    expect(screen.getByText('Max Verstappen')).toBeInTheDocument()
     expect(screen.getByText('23')).toBeInTheDocument()
   })
 

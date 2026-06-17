@@ -15,6 +15,9 @@ appsettings.Development.json
 # Local tool settings (per-developer, not shared)
 .claude/settings.local.json
 
+# BMad agent skills (installed locally, not project code)
+.agents/
+
 # Editor / OS
 .vscode/*
 !.vscode/extensions.json

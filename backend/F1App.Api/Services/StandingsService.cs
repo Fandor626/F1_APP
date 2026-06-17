@@ -44,6 +44,7 @@ public class StandingsService(IErgastClient ergastClient, IMemoryCache cache)
         new(
             int.Parse(standing.Position, CultureInfo.InvariantCulture),
             standing.Driver.FamilyName,
+            $"{standing.Driver.GivenName} {standing.Driver.FamilyName}",
             standing.Constructors.Count > 0 ? standing.Constructors[0].Name : string.Empty,
             decimal.Parse(standing.Points, CultureInfo.InvariantCulture));
 

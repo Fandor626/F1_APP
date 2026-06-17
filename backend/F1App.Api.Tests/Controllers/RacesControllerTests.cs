@@ -141,8 +141,8 @@ public class RacesControllerTests : IClassFixture<WebApplicationFactory<Program>
         var detail = await response.Content.ReadFromJsonAsync<RaceWeekendDetail>();
         Assert.Null(detail!.PriorYearWinner);
         Assert.NotNull(detail.ChampionshipDelta);
-        Assert.Equal("Norris", detail.ChampionshipDelta!.LeaderName);
-        Assert.Equal("Verstappen", detail.ChampionshipDelta!.RunnerUpName);
+        Assert.Equal("Lando Norris", detail.ChampionshipDelta!.LeaderName);
+        Assert.Equal("Max Verstappen", detail.ChampionshipDelta!.RunnerUpName);
         Assert.Equal(23, detail.ChampionshipDelta!.PointsGap);
     }
 

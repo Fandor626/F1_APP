@@ -292,8 +292,8 @@ public class RaceScheduleServiceTests
         var detail = await service.GetRaceDetailAsync(1, CancellationToken.None);
 
         Assert.NotNull(detail!.ChampionshipDelta);
-        Assert.Equal("Norris", detail.ChampionshipDelta!.LeaderName);
-        Assert.Equal("Verstappen", detail.ChampionshipDelta!.RunnerUpName);
+        Assert.Equal("Given Norris", detail.ChampionshipDelta!.LeaderName);
+        Assert.Equal("Given Verstappen", detail.ChampionshipDelta!.RunnerUpName);
         Assert.Equal(23, detail.ChampionshipDelta!.PointsGap);
     }
 

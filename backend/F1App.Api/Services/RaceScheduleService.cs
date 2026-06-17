@@ -71,7 +71,7 @@ public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache,
 
         return topTwo.Count < 2
             ? null
-            : new ChampionshipDelta(topTwo[0].DriverName, topTwo[1].DriverName, topTwo[0].Points - topTwo[1].Points);
+            : new ChampionshipDelta(topTwo[0].FullName, topTwo[1].FullName, topTwo[0].Points - topTwo[1].Points);
     }
 
     private static CircuitPriorWinner ToPriorWinner(ErgastResultDto result) =>

@@ -4,7 +4,7 @@ baseline_commit: 9791a256f1b8f90fa696088d3ee944e78d512025
 
 # Story 1.5: Contextual Detail Data — Last Year's Winner & Championship Delta
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -131,6 +131,19 @@ None — no environment or tooling issues encountered.
 - `_bmad-output/implementation-artifacts/1-5-contextual-detail-data-last-years-winner-championship-delta.md` (this file)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (status tracking)
 
+### Review Findings
+
+- [x] [Review][Decision] ChampionshipDelta driver names are family-name-only → **fixed**: added `FullName` property to `DriverStanding`, `GetChampionshipDeltaAsync` now uses `FullName`; all affected tests and MSW mocks updated to full names ("Lando Norris", "Max Verstappen").
+- [x] [Review][Decision] "Last Year's Winner" `<h2>` heading renders unconditionally → **kept as-is**: heading always visible with fallback copy satisfies AC 2's "label" option.
+- [x] [Review][Patch] `null` prior-winner cache reliability → **dismissed**: the existing cache test `GetRaceDetailAsync_CachesCircuitResultsAndDoesNotCallErgastTwice` exercises this exact path and passes (32/32); `IMemoryCache.TryGetValue<T>` returns `true` for stored `null` in .NET 10 via the `result == null` branch. False positive.
+- [x] [Review][Defer] `PointsGap` can be zero when top-two standings are tied on points [RaceScheduleService.cs, GetChampionshipDeltaAsync] — deferred, edge-case Ergast data quality issue, not a correctness bug for a hobby POC
+- [x] [Review][Defer] `ErgastResultDto` lacks a position field — winner assumed as `results[0]` without position verification [ErgastRaceResultResponseDto.cs] — deferred, URL `/results/1.json` filter verified live against Jolpica
+- [x] [Review][Defer] `GetChampionshipDeltaAsync` has no inline cache guard [RaceScheduleService.cs] — deferred, `StandingsService.GetCurrentDriverStandingsAsync` already caches internally with 1h TTL
+- [x] [Review][Defer] `int.Parse(race.Season)` throws on non-numeric string [RaceScheduleService.cs] — deferred, pre-existing pattern throughout the codebase
+- [x] [Review][Defer] Cache stampede on concurrent cold-cache detail requests [RaceScheduleService.cs, GetPriorYearWinnerAsync] — deferred, single-instance hobby POC
+- [x] [Review][Defer] Missing test case: `priorYearWinner` absent with `championshipDelta` present combination [ContextualData.test.tsx] — deferred, minor gap; individual branches are covered
+
 ## Change Log
 
 - 2026-06-16: Implemented all 6 tasks (Ergast client method, service-layer winner/delta computation, regression fixes for the constructor-dependency change, frontend schema + `ContextualData.tsx`, full test coverage). All ACs satisfied; full backend + frontend regression suites pass. Status → review.
+- 2026-06-17: Code review — 2 decision-needed, 1 patch, 6 deferred, 1 dismissed.

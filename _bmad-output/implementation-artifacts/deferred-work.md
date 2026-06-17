@@ -1,3 +1,12 @@
+## Deferred from: code review of story-1-5 (2026-06-17)
+
+- **`PointsGap` can be zero when top-two standings are tied on points** [RaceScheduleService.cs, GetChampionshipDeltaAsync] — Ergast data quality edge case; zero gap is technically correct but odd-looking. Consider `.ToString("F0")` formatting or a guard if it becomes a UX issue.
+- **`ErgastResultDto` lacks a position field** [ErgastRaceResultResponseDto.cs] — winner assumed as `results[0]` without verifying `position == "1"`. The `/results/1.json` filter is verified live but a future Ergast API change could silently return the wrong driver.
+- **`GetChampionshipDeltaAsync` has no inline cache guard** [RaceScheduleService.cs] — standings re-queried on every detail call; harmless because `StandingsService` caches internally, but the inconsistency with `GetPriorYearWinnerAsync`'s explicit guard is worth aligning eventually.
+- **`int.Parse(race.Season)` throws on non-numeric Ergast season string** [RaceScheduleService.cs] — pre-existing pattern; if Ergast ever returns `"current"` as a season token it produces 500 instead of a clean error.
+- **Cache stampede on concurrent cold-cache detail requests** [RaceScheduleService.cs, GetPriorYearWinnerAsync] — check-then-act window allows two concurrent requests to both miss and both call Ergast. Not an issue for a single-instance hobby POC but worth a `SemaphoreSlim` or `Lazy<Task>` if this ever goes multi-instance.
+- **Missing test: `priorYearWinner` absent with `championshipDelta` present** [ContextualData.test.tsx] — the individual branches are covered; this combination is exercised via MSW mock for round 2 but has no dedicated `ContextualData` unit test case.
+
 ## Deferred from: code review of story-1-1 (2026-06-16)
 
 - **Frontend health-check fetch has no timeout/`AbortController`** [frontend/src/shared/api/health.ts] — a hung connection leaves the UI on "Checking backend…" indefinitely. Not fixed now because this exact code is explicitly throwaway scaffolding (replaced by the real Calendar page in Story 1.2). Apply a timeout/abort pattern to the real TanStack Query calls introduced from Story 1.2 onward.

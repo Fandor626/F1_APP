@@ -29,6 +29,7 @@ public class StandingsServiceTests
         var standing = Assert.Single(standings);
         Assert.Equal(1, standing.Position);
         Assert.Equal("Antonelli", standing.DriverName);
+        Assert.Equal("Given Antonelli", standing.FullName);
         Assert.Equal("Mercedes", standing.ConstructorName);
         Assert.Equal(156, standing.Points);
     }
