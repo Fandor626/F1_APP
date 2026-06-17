@@ -1,3 +1,18 @@
+## Deferred from: code review of 2-1-live-gap-list (2026-06-17)
+
+- **[D1] Session transition: stale driver data persists in ConcurrentDictionaries** [`RaceDataOrchestrator.cs:20-21`] — `_latestPositions`/`_latestIntervals` never cleared when `session_key=latest` flips to a new session; retired drivers and stale positions accumulate. Story 2.5 scope.
+- **[D2] PeriodicTimer recreated without dispose on exception restart, no backoff** [`RaceDataOrchestrator.cs:73,90`] — transient exceptions cause tight restart loop and OS timer handle leak. Acceptable for POC; apply disposal + backoff before production.
+- **[D3] `_lastPositionPoll` DateTimeOffset not volatile; technically torn-read possible on 32-bit runtimes** [`RaceDataOrchestrator.cs:24`] — .NET 64-bit makes this safe in practice. Add `Interlocked` or `volatile` if ever targeting 32-bit.
+- **[D4] `InvalidOperationException` conflated with upstream HTTP errors in global exception handler** [`Program.cs:77`] — pre-existing pattern; own-code `InvalidOperationException` logs at Warning and returns 502, hiding real bugs.
+- **[D5] `InitialiseDriverInfoAsync` no retry; transient failure leaves driver names as numbers for process lifetime** [`RaceDataOrchestrator.cs:38`] — acceptable for POC; add exponential-backoff retry or periodic re-check before production.
+- **[D6] `BuildSnapshot` observes partial ConcurrentDictionary state during publish tick (TOCTOU)** [`RaceDataOrchestrator.cs:124`] — position updated mid-snapshot can pair with stale interval timestamp, causing false staleness. Acceptable for 1s snapshot POC.
+- **[D7] `parseFloat` on non-numeric gap strings (`"LAP"`, `"+1 LAP"`) — renders verbatim** [`DriverRow.tsx:15`] — `NaN < 1.0` keeps battle highlight safe, string falls through to plain span. Need display handling once non-numeric OpenF1 values are confirmed in real race data.
+- **[D8] Race leader may show `~–` if OpenF1 omits them from intervals feed entirely** [`RaceDataOrchestrator.cs:129`] — leader should show `—` (no gap). Depends on real API behaviour; verify once live.
+- **[D9] `setDrivers` replaces entire drivers map; any partial snapshot causes driver to vanish for one render cycle** [`liveRaceStore.ts:20`] — backend only publishes when `Drivers.Count > 0`, mitigating risk. Consider merge-by-key in future.
+- **[D10] `OpenF1BaseUrl`/`ErgastBaseUrl` null-bang crashes process with no useful error on missing config** [`Program.cs:39,46`] — pre-existing pattern shared with `ErgastBaseUrl`. Replace with `GetRequiredSection`/explicit null-check before production.
+- **[D11] `appsettings.json` has no fallback values for `OpenF1BaseUrl`/`JoinToleranceMs`; new contributor clone fails immediately** — setup/docs issue. Add commented-out example entries or a setup README section.
+- **[D12] Test coverage gaps: `"LAP"` gap strings, session transitions, `PublishSnapshotLoopAsync` gate, `ExecuteAsync` integration** [`RaceDataOrchestratorTests.cs`] — all 8 tests exercise `BuildSnapshot` directly via pre-seeded state. Add integration-level tests when Story 2.5 adds the fallback state machine.
+
 ## Deferred from: code review of 1-7-pre-race-win-probability-widget (2026-06-17)
 
 - **Cache stampede: `TryGetValue`/`Set` not atomic under concurrent requests** [`WinProbabilityService.cs:14-57`] — pre-existing pattern across all services; under concurrent load multiple callers can all miss the cache and fire duplicate Ergast requests. Fix with `GetOrCreateAsync` or a `SemaphoreSlim` when moving beyond single-instance POC.

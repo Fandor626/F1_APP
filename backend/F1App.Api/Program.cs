@@ -1,8 +1,11 @@
 using System.Net;
 using System.Text.Json.Serialization;
 using F1App.Api.Clients;
+using F1App.Api.Hubs;
 using F1App.Api.Services;
 using Microsoft.AspNetCore.Diagnostics;
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("F1App.Api.Tests")]
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,11 +24,14 @@ builder.Services.AddCors(options =>
     options.AddPolicy(FrontendDevCorsPolicy, policy =>
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .AllowCredentials()); // required for SignalR WebSocket upgrade
 });
 
+builder.Services.AddSignalR();
 builder.Services.AddProblemDetails();
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton(TimeProvider.System);
 
 // Trailing slash is required: HttpClient resolves a relative request URI
 // ("current.json") against BaseAddress by replacing the last path segment
@@ -36,9 +42,18 @@ builder.Services.AddHttpClient<IErgastClient, ErgastClient>(client =>
     client.BaseAddress = new Uri(ergastBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(10);
 });
+
+var openF1BaseUrl = builder.Configuration["OpenF1BaseUrl"]!.TrimEnd('/') + "/";
+builder.Services.AddHttpClient<IOpenF1Client, OpenF1Client>(client =>
+{
+    client.BaseAddress = new Uri(openF1BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 builder.Services.AddScoped<RaceScheduleService>();
 builder.Services.AddScoped<StandingsService>();
 builder.Services.AddScoped<WinProbabilityService>();
+builder.Services.AddHostedService<RaceDataOrchestrator>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -92,6 +107,7 @@ app.UseCors(FrontendDevCorsPolicy);
 app.UseHttpsRedirection();
 
 app.MapControllers();
+app.MapHub<RaceHub>("/hubs/race");
 
 app.Run();
 
