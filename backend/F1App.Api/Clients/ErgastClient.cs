@@ -43,4 +43,15 @@ public class ErgastClient(HttpClient httpClient) : IErgastClient
             ? []
             : response.MRData.RaceTable.Races[0].Results;
     }
+
+    public async Task<IReadOnlyList<ErgastQualifyingResultDto>> GetQualifyingResultsAsync(int round, CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastQualifyingResponseDto>(
+            $"current/{round}/qualifying.json", cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for round {round} qualifying.");
+
+        return response.MRData.RaceTable.Races.Count == 0
+            ? []
+            : response.MRData.RaceTable.Races[0].QualifyingResults;
+    }
 }

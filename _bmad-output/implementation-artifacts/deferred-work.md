@@ -1,3 +1,10 @@
+## Deferred from: code review of 1-7-pre-race-win-probability-widget (2026-06-17)
+
+- **Cache stampede: `TryGetValue`/`Set` not atomic under concurrent requests** [`WinProbabilityService.cs:14-57`] — pre-existing pattern across all services; under concurrent load multiple callers can all miss the cache and fire duplicate Ergast requests. Fix with `GetOrCreateAsync` or a `SemaphoreSlim` when moving beyond single-instance POC.
+- **Controller and service inject concrete types, no `IWinProbabilityService` / `IStandingsService` interfaces** [`WinProbabilityController.cs:10`, `WinProbabilityService.cs:9`] — pre-existing POC pattern consistent with `StandingsService` and `RaceScheduleService`; prevents controller-level unit testing but fine for this project's test strategy.
+- **`WinProbability(int round)` cache key has no season component — collides across years** [`CacheKeys.cs:11`] — pre-existing pattern (existing `CurrentDriverStandings` key also lacks season scoping); in-memory cache is cleared on process restart so only relevant for long-lived servers spanning a season boundary.
+- **Standings 1h TTL vs win probability 6h TTL creates stale champion-multiplier for up to 6h post-race** [`WinProbabilityService.cs:10`] — by design for POC; the combination (qualifying grid × champion weights) is snapshotted at compute time and is correct for the race weekend it covers. Full fix requires cache invalidation on standings refresh.
+
 ## Deferred from: code review of 1-6-timezone-toggle (2026-06-17)
 
 - **ARIA semantics: `aria-pressed` siblings vs. `role="radiogroup"`** [TimezoneToggle.tsx] — two `aria-pressed` buttons don't communicate mutual exclusivity to assistive technology; `role="radiogroup"` + `role="radio"` children would be more correct. Best-practice improvement, not a correctness bug.

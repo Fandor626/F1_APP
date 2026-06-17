@@ -43,6 +43,7 @@ public class StandingsService(IErgastClient ergastClient, IMemoryCache cache)
     private static DriverStanding ToDriverStanding(ErgastDriverStandingDto standing) =>
         new(
             int.Parse(standing.Position, CultureInfo.InvariantCulture),
+            standing.Driver.DriverId,
             standing.Driver.FamilyName,
             $"{standing.Driver.GivenName} {standing.Driver.FamilyName}",
             standing.Constructors.Count > 0 ? standing.Constructors[0].Name : string.Empty,

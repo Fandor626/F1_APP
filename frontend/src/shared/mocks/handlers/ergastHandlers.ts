@@ -76,6 +76,7 @@ export const ergastHandlers = [
   http.get(`${API_BASE_URL}/api/races`, () => HttpResponse.json(sampleRaceSchedule)),
   http.get(`${API_BASE_URL}/api/standings/drivers`, () => HttpResponse.json(sampleDriverStandings)),
   http.get(`${API_BASE_URL}/api/standings/constructors`, () => HttpResponse.json(sampleConstructorStandings)),
+  http.get(`${API_BASE_URL}/api/races/:round/win-probability`, () => HttpResponse.json([])),
   http.get(`${API_BASE_URL}/api/races/:round`, ({ params }) => {
     const detail = sampleRaceDetailsByRound[Number(params.round)]
     return detail ? HttpResponse.json(detail) : new HttpResponse(null, { status: 404 })

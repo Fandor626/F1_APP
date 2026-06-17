@@ -71,6 +71,17 @@ export type PriorYearWinner = z.infer<typeof PriorYearWinnerSchema>
 export type ChampionshipDelta = z.infer<typeof ChampionshipDeltaSchema>
 export type RaceWeekendDetail = z.infer<typeof RaceWeekendDetailSchema>
 
+const WinProbabilityEntrySchema = z.object({
+  driverName: z.string(),
+  constructorName: z.string(),
+  gridPosition: z.number(),
+  winProbability: z.number(),
+})
+
+const WinProbabilitySchema = z.array(WinProbabilityEntrySchema)
+
+export type WinProbabilityEntry = z.infer<typeof WinProbabilityEntrySchema>
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined
 
 // Mirrors backend's schedule cache TTL — no point polling more often than
@@ -79,6 +90,9 @@ const RACE_SCHEDULE_STALE_TIME_MS = 1000 * 60 * 60
 
 // Mirrors backend's standings cache TTL (1h).
 const STANDINGS_STALE_TIME_MS = 1000 * 60 * 60
+
+// Mirrors backend's qualifying results cache TTL (6h).
+const QUALIFYING_STALE_TIME_MS = 1000 * 60 * 60 * 6
 
 // A hung connection (no response, no error) must not leave the page stuck
 // on a loading state forever — see deferred-work.md from Story 1.1.
@@ -132,6 +146,16 @@ export function useRaceDetail(round: number) {
     queryKey: queryKeys.raceDetail(round),
     queryFn: ({ signal }) => fetchJson(`/api/races/${round}`, RaceWeekendDetailSchema, signal),
     staleTime: RACE_SCHEDULE_STALE_TIME_MS,
+    retry: false,
+  })
+}
+
+export function useWinProbability(round: number) {
+  return useQuery({
+    queryKey: queryKeys.winProbability(round),
+    queryFn: ({ signal }) => fetchJson(`/api/races/${round}/win-probability`, WinProbabilitySchema, signal),
+    staleTime: QUALIFYING_STALE_TIME_MS,
+    enabled: !isNaN(round) && round > 0,
     retry: false,
   })
 }

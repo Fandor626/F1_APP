@@ -7,4 +7,6 @@ public static class CacheKeys
     public const string CurrentConstructorStandings = "standings:constructors:current";
 
     public static string CircuitPriorResults(int season, string circuitId) => $"results:{season}:{circuitId}";
+
+    public static string WinProbability(int round) => $"winProbability:{round}";
 }

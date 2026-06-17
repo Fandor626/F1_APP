@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useRaceDetail } from '../../shared/api/ergast'
+import { useRaceDetail, useWinProbability } from '../../shared/api/ergast'
 import { CountryFlag } from '../../shared/components/CountryFlag'
 import { formatSessionTimeForMode } from '../../shared/utils/dateUtils'
 import { ContextualData } from './ContextualData'
 import { TimezoneToggle } from './TimezoneToggle'
+import { WinProbabilityWidget } from './WinProbabilityWidget'
 
 function SessionsSkeleton() {
   return (
@@ -22,6 +23,7 @@ function SessionsSkeleton() {
 export function RaceWeekendDetailView() {
   const { round } = useParams<{ round: string }>()
   const { data, isPending, isError } = useRaceDetail(Number(round))
+  const { data: winProbs } = useWinProbability(Number(round))
   const [tzMode, setTzMode] = useState<'local' | 'track'>('local')
 
   return (
@@ -67,6 +69,7 @@ export function RaceWeekendDetailView() {
           </ul>
 
           <ContextualData priorYearWinner={data.priorYearWinner} championshipDelta={data.championshipDelta} />
+          {winProbs && winProbs.length > 0 && <WinProbabilityWidget entries={winProbs} />}
         </>
       )}
     </div>

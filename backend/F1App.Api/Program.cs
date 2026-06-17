@@ -38,6 +38,7 @@ builder.Services.AddHttpClient<IErgastClient, ErgastClient>(client =>
 });
 builder.Services.AddScoped<RaceScheduleService>();
 builder.Services.AddScoped<StandingsService>();
+builder.Services.AddScoped<WinProbabilityService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
