@@ -66,6 +66,9 @@ public class RaceDataOrchestrator(
 
     private async Task<bool> IsRaceWeekendActiveAsync(CancellationToken ct)
     {
+        if (configuration.GetValue("Polling:ForceActive", false))
+            return true;
+
         var now = timeProvider.GetUtcNow();
         if (now < _raceWeekendCheckExpiry)
             return _raceWeekendActive;
