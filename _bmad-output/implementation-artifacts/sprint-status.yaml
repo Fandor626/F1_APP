@@ -1,5 +1,5 @@
 # generated: 2026-06-16
-# last_updated: 2026-06-17
+# last_updated: 2026-06-23
 # project: F1_poc
 
 # project_key: NOKEY
@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-16
-last_updated: 2026-06-17
+last_updated: 2026-06-23
 
 # Note: Story 1.5 was created via the formal create-story workflow (unlike
 # 1.2-1.4, which were implemented directly) — it has a full story-context
@@ -65,7 +65,7 @@ development_status:
   epic-2: in-progress
   2-1-live-gap-list: done
   2-2-live-tyre-tracker: done
-  2-3-live-lap-time-chart: backlog
+  2-3-live-lap-time-chart: review
   2-4-live-championship-impact-tracker: backlog
   2-5-fallback-to-last-race: backlog
   epic-2-retrospective: optional

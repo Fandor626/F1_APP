@@ -26,6 +26,9 @@ public class RaceDataOrchestrator(
     internal readonly ConcurrentDictionary<int, OpenF1StintDto> _latestStints = new();
     // Maximum lap_number seen per driver — only ever increases
     internal readonly ConcurrentDictionary<int, int> _driverCurrentLap = new();
+    // Per-driver lap time history: driverNumber → (lapNumber → LapTimeEntry)
+    // Only stores completed laps (non-null LapDuration)
+    internal readonly ConcurrentDictionary<int, ConcurrentDictionary<int, LapTimeEntry>> _driverLapTimes = new();
     internal IReadOnlyDictionary<int, OpenF1DriverInfoDto> _driverInfo = new Dictionary<int, OpenF1DriverInfoDto>();
 
     private DateTimeOffset _lastPositionPoll = DateTimeOffset.MinValue;
@@ -219,6 +222,12 @@ public class RaceDataOrchestrator(
                     lap.DriverNumber,
                     lap.LapNumber,
                     (_, existing) => lap.LapNumber > existing ? lap.LapNumber : existing);
+
+                if (lap.LapDuration.HasValue)
+                {
+                    var driverLaps = _driverLapTimes.GetOrAdd(lap.DriverNumber, _ => new());
+                    driverLaps[lap.LapNumber] = new LapTimeEntry(lap.LapNumber, lap.LapDuration, lap.IsPitOutLap);
+                }
             }
         }
     }
@@ -281,10 +290,18 @@ public class RaceDataOrchestrator(
             });
         }
 
+        var lapChart = new Dictionary<int, IReadOnlyList<LapTimeEntry>>();
+        foreach (var (driverNum, lapsByLap) in _driverLapTimes)
+        {
+            if (_latestPositions.ContainsKey(driverNum))
+                lapChart[driverNum] = [.. lapsByLap.Values.OrderBy(l => l.LapNumber)];
+        }
+
         return new RaceStateSnapshot
         {
             CapturedAt = timeProvider.GetUtcNow(),
             Drivers = [.. drivers.OrderBy(d => d.Position)],
+            LapChart = lapChart,
         };
     }
 }

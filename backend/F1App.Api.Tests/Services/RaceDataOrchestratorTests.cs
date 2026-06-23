@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using F1App.Api.Clients;
 using F1App.Api.Dtos.OpenF1;
 using F1App.Api.Hubs;
+using F1App.Api.Models;
 using F1App.Api.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
@@ -60,6 +62,9 @@ public class RaceDataOrchestratorTests
     private static OpenF1StintDto MakeStint(int driverNum, int stintNum, int lapStart,
         string compound, int tyreAgeAtStart = 0) =>
         new(driverNum, stintNum, lapStart, null, compound, tyreAgeAtStart);
+
+    private static LapTimeEntry MakeLap(int lapNum, double? duration, bool isPitOut = false) =>
+        new(lapNum, duration, isPitOut);
 
     [Fact]
     public void BuildSnapshot_EmptyPositions_ReturnsEmptyDriverList()
@@ -229,5 +234,67 @@ public class RaceDataOrchestratorTests
 
         Assert.Equal("HARD", snapshot.Drivers[0].TyreCompound);
         Assert.Null(snapshot.Drivers[0].StintLaps);
+    }
+
+    [Fact]
+    public void BuildSnapshot_WithLapTimes_PopulatesLapChart()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._driverLapTimes[33] = new ConcurrentDictionary<int, LapTimeEntry>();
+        sut._driverLapTimes[33][1] = MakeLap(1, 83.456);
+        sut._driverLapTimes[33][2] = MakeLap(2, 82.123);
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Single(snapshot.LapChart);
+        Assert.Equal(2, snapshot.LapChart[33].Count);
+        Assert.Equal(1, snapshot.LapChart[33][0].LapNumber);
+        Assert.Equal(83.456, snapshot.LapChart[33][0].LapDurationSeconds);
+        Assert.Equal(2, snapshot.LapChart[33][1].LapNumber);
+    }
+
+    [Fact]
+    public void BuildSnapshot_LapChartOrderedByLapNumber()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._driverLapTimes[33] = new ConcurrentDictionary<int, LapTimeEntry>();
+        sut._driverLapTimes[33][3] = MakeLap(3, 81.0);
+        sut._driverLapTimes[33][1] = MakeLap(1, 83.0);
+        sut._driverLapTimes[33][2] = MakeLap(2, 82.0);
+
+        var snapshot = sut.BuildSnapshot();
+
+        var laps = snapshot.LapChart[33];
+        Assert.Equal(1, laps[0].LapNumber);
+        Assert.Equal(2, laps[1].LapNumber);
+        Assert.Equal(3, laps[2].LapNumber);
+    }
+
+    [Fact]
+    public void BuildSnapshot_PitOutLapFlagPreserved()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._driverLapTimes[33] = new ConcurrentDictionary<int, LapTimeEntry>();
+        sut._driverLapTimes[33][20] = MakeLap(20, 125.7, isPitOut: true);
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.True(snapshot.LapChart[33][0].IsPitOutLap);
+        Assert.Equal(125.7, snapshot.LapChart[33][0].LapDurationSeconds);
+    }
+
+    [Fact]
+    public void BuildSnapshot_NoLapTimes_LapChartEmpty()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        // _driverLapTimes not populated
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Empty(snapshot.LapChart);
     }
 }

@@ -13,11 +13,13 @@ let lifecycleHandlersAttached = false
 export function useSignalRConnection() {
   const setConnectionStatus = useLiveRaceStore(s => s.setConnectionStatus)
   const setDrivers = useLiveRaceStore(s => s.setDrivers)
+  const setLapChart = useLiveRaceStore(s => s.setLapChart)
   const setLastSnapshotTime = useLiveRaceStore(s => s.setLastSnapshotTime)
 
   useEffect(() => {
     const handleSnapshot = (snapshot: RaceSnapshotMessage) => {
       setDrivers(normalizeSnapshot(snapshot.drivers))
+      setLapChart(snapshot.lapChart)
       setLastSnapshotTime(new Date())
     }
 
@@ -40,5 +42,5 @@ export function useSignalRConnection() {
     return () => {
       raceHubConnection.off('RaceSnapshot', handleSnapshot)
     }
-  }, [setConnectionStatus, setDrivers, setLastSnapshotTime])
+  }, [setConnectionStatus, setDrivers, setLapChart, setLastSnapshotTime])
 }

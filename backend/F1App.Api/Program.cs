@@ -28,7 +28,11 @@ builder.Services.AddCors(options =>
               .AllowCredentials()); // required for SignalR WebSocket upgrade
 });
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+{
+    options.PayloadSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    options.PayloadSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
 builder.Services.AddProblemDetails();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton(TimeProvider.System);

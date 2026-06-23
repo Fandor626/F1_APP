@@ -1,4 +1,5 @@
 import { GapList } from './GapList/GapList'
+import { LapTimeChart } from './LapTimeChart/LapTimeChart'
 import { useSignalRConnection } from './hooks/useSignalRConnection'
 
 export function LiveRacePage() {
@@ -7,7 +8,10 @@ export function LiveRacePage() {
   return (
     <div className="min-h-screen bg-[#14171c] text-[#eef0f3] p-4">
       <h1 className="text-[26px] font-bold tracking-[-0.01em] mb-4">Live Race</h1>
-      <GapList />
+      <div className="flex flex-col gap-4">
+        <GapList />
+        <LapTimeChart />
+      </div>
     </div>
   )
 }
