@@ -69,6 +69,14 @@ export function DriverRow({ driverId }: DriverRowProps) {
           )}
         </span>
       ) : null}
+      {driver.championshipDelta != null && (
+        <span
+          className="text-[10px] text-[#6b7280] tabular-nums shrink-0"
+          data-testid="championship-delta"
+        >
+          {driver.championshipDelta}
+        </span>
+      )}
       <span className="ml-auto tabular-nums">{gapDisplay}</span>
     </div>
   )

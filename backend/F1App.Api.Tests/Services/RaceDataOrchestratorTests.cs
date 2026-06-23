@@ -66,6 +66,9 @@ public class RaceDataOrchestratorTests
     private static LapTimeEntry MakeLap(int lapNum, double? duration, bool isPitOut = false) =>
         new(lapNum, duration, isPitOut);
 
+    private static DriverStanding MakeStanding(string driverName, decimal points, int position = 1) =>
+        new(position, driverName.ToLowerInvariant(), driverName, $"First {driverName}", "Team", points);
+
     [Fact]
     public void BuildSnapshot_EmptyPositions_ReturnsEmptyDriverList()
     {
@@ -296,5 +299,104 @@ public class RaceDataOrchestratorTests
         var snapshot = sut.BuildSnapshot();
 
         Assert.Empty(snapshot.LapChart);
+    }
+
+    [Theory]
+    [InlineData(1, 25)]
+    [InlineData(2, 18)]
+    [InlineData(3, 15)]
+    [InlineData(4, 12)]
+    [InlineData(5, 10)]
+    [InlineData(6, 8)]
+    [InlineData(7, 6)]
+    [InlineData(8, 4)]
+    [InlineData(9, 2)]
+    [InlineData(10, 1)]
+    [InlineData(11, 0)]
+    [InlineData(20, 0)]
+    public void RacePointsForPosition_ReturnsCorrectPoints(int position, int expected)
+    {
+        Assert.Equal(expected, RaceDataOrchestrator.RacePointsForPosition(position));
+    }
+
+    [Fact]
+    public void BuildSnapshot_LeaderHasPositiveChampionshipDelta()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._latestPositions[44] = MakePosition(44, 2, DateTimeOffset.UtcNow);
+        sut._driverStandings = [MakeStanding("Verstappen", 300), MakeStanding("Hamilton", 250)];
+        sut._driverInfo = new Dictionary<int, OpenF1DriverInfoDto>
+        {
+            [33] = new OpenF1DriverInfoDto(33, "VER", "Red Bull Racing", "3671C6"),
+            [44] = new OpenF1DriverInfoDto(44, "HAM", "Mercedes", "27F4D2"),
+        };
+
+        var snapshot = sut.BuildSnapshot();
+
+        // VER projected: 300 + 25 = 325; HAM projected: 250 + 18 = 268; lead = 57
+        var ver = snapshot.Drivers.Single(d => d.DriverNumber == 33);
+        Assert.Equal("+57", ver.ChampionshipDelta);
+    }
+
+    [Fact]
+    public void BuildSnapshot_TrailerHasNegativeChampionshipDelta()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._latestPositions[44] = MakePosition(44, 2, DateTimeOffset.UtcNow);
+        sut._driverStandings = [MakeStanding("Verstappen", 300), MakeStanding("Hamilton", 250)];
+        sut._driverInfo = new Dictionary<int, OpenF1DriverInfoDto>
+        {
+            [33] = new OpenF1DriverInfoDto(33, "VER", "Red Bull Racing", "3671C6"),
+            [44] = new OpenF1DriverInfoDto(44, "HAM", "Mercedes", "27F4D2"),
+        };
+
+        var snapshot = sut.BuildSnapshot();
+
+        // HAM projected P2; gap to VER = 325 - 268 = 57
+        var ham = snapshot.Drivers.Single(d => d.DriverNumber == 44);
+        Assert.Equal("−57", ham.ChampionshipDelta);
+    }
+
+    [Fact]
+    public void BuildSnapshot_NoStandings_DeltaIsNull()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        // _driverStandings left as empty []
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Null(snapshot.Drivers[0].ChampionshipDelta);
+    }
+
+    [Fact]
+    public void BuildSnapshot_UnmatchedDriver_DeltaIsNull()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[99] = MakePosition(99, 1, DateTimeOffset.UtcNow);
+        sut._driverStandings = [MakeStanding("Verstappen", 300)];
+        // Driver 99 has no _driverInfo entry — no acronym for matching
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Null(snapshot.Drivers[0].ChampionshipDelta);
+    }
+
+    [Fact]
+    public void BuildSnapshot_SingleMatchedDriver_LeaderDeltaIsNull()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._driverStandings = [MakeStanding("Verstappen", 300)];
+        sut._driverInfo = new Dictionary<int, OpenF1DriverInfoDto>
+        {
+            [33] = new OpenF1DriverInfoDto(33, "VER", "Red Bull Racing", "3671C6"),
+        };
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Null(snapshot.Drivers[0].ChampionshipDelta);
     }
 }

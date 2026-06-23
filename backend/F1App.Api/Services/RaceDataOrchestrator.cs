@@ -30,6 +30,8 @@ public class RaceDataOrchestrator(
     // Only stores completed laps (non-null LapDuration)
     internal readonly ConcurrentDictionary<int, ConcurrentDictionary<int, LapTimeEntry>> _driverLapTimes = new();
     internal IReadOnlyDictionary<int, OpenF1DriverInfoDto> _driverInfo = new Dictionary<int, OpenF1DriverInfoDto>();
+    internal IReadOnlyList<DriverStanding> _driverStandings = [];
+    private Dictionary<string, DriverStanding> _standingByPrefix = new(StringComparer.OrdinalIgnoreCase);
 
     private DateTimeOffset _lastPositionPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastIntervalPoll = DateTimeOffset.MinValue;
@@ -119,6 +121,25 @@ public class RaceDataOrchestrator(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "RaceDataOrchestrator: failed to load driver info; will use driver numbers as fallback");
+        }
+
+        _driverStandings = [];
+        _standingByPrefix = new Dictionary<string, DriverStanding>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var standingsSvc = scope.ServiceProvider.GetRequiredService<StandingsService>();
+            _driverStandings = await standingsSvc.GetCurrentDriverStandingsAsync(ct);
+            foreach (var s in _driverStandings)
+            {
+                var prefix = s.DriverName.Length >= 3 ? s.DriverName[..3] : s.DriverName;
+                _standingByPrefix.TryAdd(prefix, s);
+            }
+            logger.LogInformation("RaceDataOrchestrator: loaded {Count} driver standings", _driverStandings.Count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "RaceDataOrchestrator: failed to load driver standings; championship delta unavailable");
         }
     }
 
@@ -290,6 +311,13 @@ public class RaceDataOrchestrator(
             });
         }
 
+        if (_driverStandings.Count > 0)
+        {
+            var deltaMap = ComputeChampionshipDeltas(drivers);
+            for (int i = 0; i < drivers.Count; i++)
+                drivers[i] = drivers[i] with { ChampionshipDelta = deltaMap.GetValueOrDefault(drivers[i].DriverNumber) };
+        }
+
         var lapChart = new Dictionary<int, IReadOnlyList<LapTimeEntry>>();
         foreach (var (driverNum, lapsByLap) in _driverLapTimes)
         {
@@ -303,5 +331,58 @@ public class RaceDataOrchestrator(
             Drivers = [.. drivers.OrderBy(d => d.Position)],
             LapChart = lapChart,
         };
+    }
+
+    internal static int RacePointsForPosition(int position) => position switch
+    {
+        1 => 25, 2 => 18, 3 => 15, 4 => 12, 5 => 10,
+        6 => 8,  7 => 6,  8 => 4,  9 => 2,  10 => 1,
+        _ => 0
+    };
+
+    private Dictionary<int, string?> ComputeChampionshipDeltas(List<DriverState> raceDrivers)
+    {
+        // _standingByPrefix is pre-built in InitialiseDriverInfoAsync in production;
+        // build lazily here to support test scenarios where _driverStandings is set directly.
+        if (_standingByPrefix.Count == 0)
+        {
+            foreach (var s in _driverStandings)
+            {
+                var prefix = s.DriverName.Length >= 3 ? s.DriverName[..3] : s.DriverName;
+                _standingByPrefix.TryAdd(prefix, s);
+            }
+        }
+
+        var projected = new List<(int DriverNumber, decimal ProjectedPoints)>();
+        foreach (var driver in raceDrivers)
+        {
+            if (!_driverInfo.TryGetValue(driver.DriverNumber, out var info)) continue;
+            if (!_standingByPrefix.TryGetValue(info.NameAcronym, out var standing)) continue;
+
+            projected.Add((driver.DriverNumber, standing.Points + RacePointsForPosition(driver.Position)));
+        }
+
+        projected.Sort((a, b) => b.ProjectedPoints.CompareTo(a.ProjectedPoints));
+
+        var result = new Dictionary<int, string?>();
+        for (int i = 0; i < projected.Count; i++)
+        {
+            var (driverNum, pts) = projected[i];
+            if (i == 0)
+            {
+                if (projected.Count > 1)
+                {
+                    var lead = pts - projected[1].ProjectedPoints;
+                    result[driverNum] = $"+{lead:0.#}";
+                }
+            }
+            else
+            {
+                var trail = projected[i - 1].ProjectedPoints - pts;
+                result[driverNum] = trail == 0m ? "=0" : $"−{trail:0.#}";
+            }
+        }
+
+        return result;
     }
 }

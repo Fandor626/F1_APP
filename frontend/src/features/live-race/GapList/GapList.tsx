@@ -16,9 +16,14 @@ export function GapList() {
   return (
     <div className="bg-[#1b1f26] border border-[#2a2f38] rounded-[14px] overflow-hidden">
       <div className="flex items-center justify-between px-[10px] py-[8px] border-b border-[#2a2f38]">
-        <span className="text-[11.5px] font-semibold tracking-[0.04em] uppercase text-[#9aa1ad]">
-          Race Order
-        </span>
+        <div className="flex flex-col">
+          <span className="text-[11.5px] font-semibold tracking-[0.04em] uppercase text-[#9aa1ad]">
+            Race Order
+          </span>
+          <span className="text-[9px] text-[#6b7280] tracking-wide">
+            pts if race ended now
+          </span>
+        </div>
         <span
           className={`text-[11.5px] font-semibold ${
             connectionStatus === 'connected'

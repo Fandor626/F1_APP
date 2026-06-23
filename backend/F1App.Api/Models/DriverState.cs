@@ -9,7 +9,6 @@ public record DriverState
     public int Position { get; init; }
     public string? GapToCarAhead { get; init; }
     public bool GapIsStale { get; init; }
-    // Placeholders for Stories 2.2–2.4 (not populated in this story):
     public string? TyreCompound { get; init; }
     public int? StintLaps { get; init; }
     public string? ChampionshipDelta { get; init; }

@@ -147,4 +147,39 @@ describe('GapList', () => {
     expect(screen.getByTestId('tyre-compound')).toBeInTheDocument()
     expect(screen.queryByTestId('stint-laps')).not.toBeInTheDocument()
   })
+
+  it('shows championship delta when set', () => {
+    useLiveRaceStore.setState({
+      drivers: {
+        '33': makeDriver(33, 1, { championshipDelta: '+45' }),
+      },
+    })
+    render(<GapList />)
+    expect(screen.getByTestId('championship-delta').textContent).toBe('+45')
+  })
+
+  it('hides championship delta when null', () => {
+    useLiveRaceStore.setState({
+      drivers: {
+        '33': makeDriver(33, 1, { championshipDelta: null }),
+      },
+    })
+    render(<GapList />)
+    expect(screen.queryByTestId('championship-delta')).not.toBeInTheDocument()
+  })
+
+  it('shows negative delta for trailing driver', () => {
+    useLiveRaceStore.setState({
+      drivers: {
+        '33': makeDriver(33, 1, { championshipDelta: '−12' }),
+      },
+    })
+    render(<GapList />)
+    expect(screen.getByTestId('championship-delta').textContent).toBe('−12')
+  })
+
+  it('renders "pts if race ended now" label in header', () => {
+    render(<GapList />)
+    expect(screen.getByText('pts if race ended now')).toBeInTheDocument()
+  })
 })
