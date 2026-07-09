@@ -63,7 +63,8 @@ describe('TrackMap', () => {
           driverNumber: 1, driverCode: 'VER', teamName: 'Red Bull Racing',
           teamColour: '3671C6', position: 1, gapToCarAhead: null,
           gapIsStale: false, tyreCompound: null, stintLaps: null,
-          championshipDelta: null, x: -1500.0, y: 823.0 as number | null,
+          championshipDelta: null, x: -1500.0, y: 823.0,
+          miniSectorStatus: null,
         },
       },
     })
@@ -73,5 +74,27 @@ describe('TrackMap', () => {
       () => expect(screen.getByTestId('driver-dot-VER')).toBeInTheDocument(),
       { timeout: 2000 }
     )
+  })
+
+  it('renders purple stroke on driver dot for session-fastest sector', async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockConfig),
+    } as Response)
+    useLiveRaceStore.setState({
+      drivers: {
+        '1': {
+          driverNumber: 1, driverCode: 'VER', teamName: 'Red Bull Racing',
+          teamColour: '3671C6', position: 1, gapToCarAhead: null,
+          gapIsStale: false, tyreCompound: null, stintLaps: null,
+          championshipDelta: null, x: -1500.0, y: 823.0,
+          miniSectorStatus: 'purple',
+        },
+      },
+    })
+    render(<TrackMap circuitId="monza" />)
+    await waitFor(() => expect(screen.getByTestId('driver-dot-VER')).toBeInTheDocument(), { timeout: 2000 })
+    const circle = screen.getByTestId('driver-dot-VER').querySelector('circle')
+    expect(circle?.getAttribute('stroke')).toBe('#bf00ff')
   })
 })

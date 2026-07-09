@@ -16,6 +16,7 @@ function makeDriver(driverNumber: number, position: number): DriverState {
     championshipDelta: null,
     x: null,
     y: null,
+    miniSectorStatus: null,
   }
 }
 

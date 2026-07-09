@@ -5,6 +5,7 @@ export interface InterpolatedPosition {
   driverNumber: number
   driverCode: string
   teamColour: string
+  miniSectorStatus: 'purple' | 'green' | 'yellow' | 'white' | null
   svgX: number
   svgY: number
 }
@@ -83,6 +84,7 @@ export function useTrackInterpolation(
           driverNumber: driver.driverNumber,
           driverCode: driver.driverCode,
           teamColour: driver.teamColour,
+          miniSectorStatus: driver.miniSectorStatus ?? null,
           svgX,
           svgY,
         })

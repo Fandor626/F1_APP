@@ -69,6 +69,13 @@ public class RaceDataOrchestratorTests
     private static OpenF1LocationDto MakeLocation(int driverNum, double x, double y, DateTimeOffset date) =>
         new(driverNum, x, y, date);
 
+    private static OpenF1LapDto MakeLapWithSectors(
+        int driverNum, int lapNum, bool isPitOut = false,
+        double? s1 = null, double? s2 = null, double? s3 = null) =>
+        new(driverNum, lapNum, DateTimeOffset.UtcNow,
+            s1.HasValue && s2.HasValue && s3.HasValue ? s1 + s2 + s3 : null,
+            isPitOut, s1, s2, s3);
+
     private static DriverStanding MakeStanding(string driverName, decimal points, int position = 1) =>
         new(position, driverName.ToLowerInvariant(), driverName, $"First {driverName}", "Team", points);
 
@@ -580,5 +587,55 @@ public class RaceDataOrchestratorTests
         var snapshot = sut.BuildSnapshot();
 
         Assert.Equal("monza", snapshot.CircuitId);
+    }
+
+    [Fact]
+    public void ComputeSectorStatus_PitOutLap_SetsWhite()
+    {
+        var sut = CreateOrchestrator();
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 1, isPitOut: true, s1: 30.0));
+        Assert.Equal("white", sut._latestSectorStatus[1]);
+    }
+
+    [Fact]
+    public void ComputeSectorStatus_FirstSectorTime_IsSessionBest_SetsPurple()
+    {
+        var sut = CreateOrchestrator();
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 1, s1: 25.0));
+        Assert.Equal("purple", sut._latestSectorStatus[1]);
+    }
+
+    [Fact]
+    public void ComputeSectorStatus_SecondDriverFasterS1_FirstDriverBecomesGreen()
+    {
+        var sut = CreateOrchestrator();
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 1, s1: 25.0)); // driver 1: session best → purple
+        sut.ComputeSectorStatus(MakeLapWithSectors(2, 1, s1: 24.5)); // driver 2: new session best → purple
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 2, s1: 24.8)); // driver 1: personal best (< 25.0) but not session best → green
+        Assert.Equal("purple", sut._latestSectorStatus[2]);
+        Assert.Equal("green", sut._latestSectorStatus[1]);
+    }
+
+    [Fact]
+    public void ComputeSectorStatus_NonBestTime_SetsYellow()
+    {
+        var sut = CreateOrchestrator();
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 1, s1: 25.0));
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 2, s1: 26.0));
+        Assert.Equal("yellow", sut._latestSectorStatus[1]);
+    }
+
+    [Fact]
+    public void BuildSnapshot_WithSectorStatus_PopulatesMiniSectorStatusOnDriver()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._latestPositions[1] = MakePosition(1, 1, now);
+        sut._latestSectorStatus[1] = "purple";
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Single(snapshot.Drivers);
+        Assert.Equal("purple", snapshot.Drivers[0].MiniSectorStatus);
     }
 }

@@ -92,6 +92,7 @@ export function TrackMap({ circuitId }: TrackMapProps) {
               teamColour={p.teamColour}
               svgX={p.svgX}
               svgY={p.svgY}
+              miniSectorStatus={p.miniSectorStatus}
             />
           ))}
         </svg>

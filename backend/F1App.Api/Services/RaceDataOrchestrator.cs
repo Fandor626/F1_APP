@@ -45,6 +45,13 @@ public class RaceDataOrchestrator(
     internal string? _activeCircuitId;
     private DateTimeOffset _lastLocationPoll = DateTimeOffset.MinValue;
 
+    // Sector colour tracking
+    private double _sessionBestS1 = double.MaxValue;
+    private double _sessionBestS2 = double.MaxValue;
+    private double _sessionBestS3 = double.MaxValue;
+    internal readonly ConcurrentDictionary<int, double[]> _personalBestSectors = new();
+    internal readonly ConcurrentDictionary<int, string> _latestSectorStatus = new();
+
     private DateTimeOffset _lastPositionPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastIntervalPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastLapPoll = DateTimeOffset.MinValue;
@@ -369,8 +376,41 @@ public class RaceDataOrchestrator(
                     var driverLaps = _driverLapTimes.GetOrAdd(lap.DriverNumber, _ => new());
                     driverLaps[lap.LapNumber] = new LapTimeEntry(lap.LapNumber, lap.LapDuration, lap.IsPitOutLap);
                 }
+
+                ComputeSectorStatus(lap);
             }
         }
+    }
+
+    internal void ComputeSectorStatus(OpenF1LapDto lap)
+    {
+        if (lap.IsPitOutLap)
+        {
+            _latestSectorStatus[lap.DriverNumber] = "white";
+            return;
+        }
+
+        double? sectorTime = null;
+        int sectorIndex = 0;
+
+        if (lap.DurationSector3.HasValue) { sectorTime = lap.DurationSector3; sectorIndex = 2; }
+        else if (lap.DurationSector2.HasValue) { sectorTime = lap.DurationSector2; sectorIndex = 1; }
+        else if (lap.DurationSector1.HasValue) { sectorTime = lap.DurationSector1; sectorIndex = 0; }
+
+        if (!sectorTime.HasValue) return;
+
+        var time = sectorTime.Value;
+
+        bool isSessionBest;
+        if (sectorIndex == 0) { isSessionBest = time < _sessionBestS1; if (isSessionBest) _sessionBestS1 = time; }
+        else if (sectorIndex == 1) { isSessionBest = time < _sessionBestS2; if (isSessionBest) _sessionBestS2 = time; }
+        else { isSessionBest = time < _sessionBestS3; if (isSessionBest) _sessionBestS3 = time; }
+
+        var personal = _personalBestSectors.GetOrAdd(lap.DriverNumber, _ => [double.MaxValue, double.MaxValue, double.MaxValue]);
+        var isPersonalBest = time < personal[sectorIndex];
+        if (isPersonalBest) personal[sectorIndex] = time;
+
+        _latestSectorStatus[lap.DriverNumber] = isSessionBest ? "purple" : isPersonalBest ? "green" : "yellow";
     }
 
     private async Task PublishSnapshotLoopAsync(CancellationToken ct)
@@ -442,6 +482,8 @@ public class RaceDataOrchestrator(
                     y = loc.Y;
                 }
 
+                _latestSectorStatus.TryGetValue(driverNum, out var sectorStatus);
+
                 drivers.Add(new DriverState
                 {
                     DriverNumber = driverNum,
@@ -455,6 +497,7 @@ public class RaceDataOrchestrator(
                     StintLaps = stintLaps,
                     X = x,
                     Y = y,
+                    MiniSectorStatus = sectorStatus,
                 });
             }
 

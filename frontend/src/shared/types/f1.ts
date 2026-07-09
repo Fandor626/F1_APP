@@ -17,6 +17,7 @@ export interface DriverState {
   championshipDelta: string | null
   x: number | null
   y: number | null
+  miniSectorStatus: 'purple' | 'green' | 'yellow' | 'white' | null
 }
 
 export interface RaceStateSnapshot {

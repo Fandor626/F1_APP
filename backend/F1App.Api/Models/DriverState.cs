@@ -14,4 +14,5 @@ public record DriverState
     public string? ChampionshipDelta { get; init; }
     public double? X { get; init; }
     public double? Y { get; init; }
+    public string? MiniSectorStatus { get; init; } // "purple" | "green" | "yellow" | "white"
 }

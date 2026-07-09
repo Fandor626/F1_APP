@@ -35,6 +35,7 @@ function makeDriver(driverNumber: number, teamColour = 'FF0000'): DriverState {
     championshipDelta: null,
     x: null,
     y: null,
+    miniSectorStatus: null,
   }
 }
 

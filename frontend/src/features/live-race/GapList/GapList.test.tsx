@@ -22,6 +22,7 @@ function makeDriver(
     championshipDelta: null,
     x: null,
     y: null,
+    miniSectorStatus: null,
     ...overrides,
   }
 }
