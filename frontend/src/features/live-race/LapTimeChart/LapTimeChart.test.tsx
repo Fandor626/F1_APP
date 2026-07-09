@@ -33,6 +33,8 @@ function makeDriver(driverNumber: number, teamColour = 'FF0000'): DriverState {
     tyreCompound: null,
     stintLaps: null,
     championshipDelta: null,
+    x: null,
+    y: null,
   }
 }
 

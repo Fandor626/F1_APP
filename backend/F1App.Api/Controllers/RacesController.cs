@@ -21,4 +21,11 @@ public class RacesController(RaceScheduleService raceScheduleService) : Controll
         var detail = await raceScheduleService.GetRaceDetailAsync(round, cancellationToken);
         return detail is null ? NotFound() : Ok(detail);
     }
+
+    [HttpGet("last-result")]
+    public async Task<ActionResult<LastRaceResult>> GetLastResult(CancellationToken cancellationToken)
+    {
+        var result = await raceScheduleService.GetLastRaceResultAsync(cancellationToken);
+        return result is null ? NoContent() : Ok(result);
+    }
 }

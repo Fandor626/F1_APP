@@ -14,6 +14,8 @@ function makeDriver(driverNumber: number, position: number): DriverState {
     tyreCompound: null,
     stintLaps: null,
     championshipDelta: null,
+    x: null,
+    y: null,
   }
 }
 

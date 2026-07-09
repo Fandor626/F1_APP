@@ -15,12 +15,18 @@ export function useSignalRConnection() {
   const setDrivers = useLiveRaceStore(s => s.setDrivers)
   const setLapChart = useLiveRaceStore(s => s.setLapChart)
   const setLastSnapshotTime = useLiveRaceStore(s => s.setLastSnapshotTime)
+  const setSessionMode = useLiveRaceStore(s => s.setSessionMode)
+  const setFallbackRaceName = useLiveRaceStore(s => s.setFallbackRaceName)
+  const setCircuitId = useLiveRaceStore(s => s.setCircuitId)
 
   useEffect(() => {
     const handleSnapshot = (snapshot: RaceSnapshotMessage) => {
       setDrivers(normalizeSnapshot(snapshot.drivers))
       setLapChart(snapshot.lapChart)
       setLastSnapshotTime(new Date())
+      setSessionMode(snapshot.sessionMode ?? 'live')
+      if (snapshot.fallbackRaceName) setFallbackRaceName(snapshot.fallbackRaceName)
+      if (snapshot.circuitId) setCircuitId(snapshot.circuitId)
     }
 
     raceHubConnection.on('RaceSnapshot', handleSnapshot)
@@ -39,8 +45,18 @@ export function useSignalRConnection() {
         .catch(() => setConnectionStatus('disconnected'))
     }
 
+    // Client-side fallback trigger — if 10s pass with no snapshot received after
+    // connecting (server is running but no race weekend active, so it doesn't emit),
+    // switch to fallback mode so LiveRacePage fetches from the REST endpoint.
+    const noDataTimeout = window.setTimeout(() => {
+      if (useLiveRaceStore.getState().lastSnapshotTime === null) {
+        setSessionMode('fallback')
+      }
+    }, 10_000)
+
     return () => {
       raceHubConnection.off('RaceSnapshot', handleSnapshot)
+      window.clearTimeout(noDataTimeout)
     }
-  }, [setConnectionStatus, setDrivers, setLapChart, setLastSnapshotTime])
+  }, [setConnectionStatus, setDrivers, setLapChart, setLastSnapshotTime, setSessionMode, setFallbackRaceName, setCircuitId])
 }

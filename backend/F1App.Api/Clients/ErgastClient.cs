@@ -54,4 +54,15 @@ public class ErgastClient(HttpClient httpClient) : IErgastClient
             ? []
             : response.MRData.RaceTable.Races[0].QualifyingResults;
     }
+
+    public async Task<ErgastRaceResultRaceDto?> GetLastRaceResultsAsync(CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastRaceResultResponseDto>(
+            "current/last/results.json", cancellationToken)
+            ?? throw new InvalidOperationException("Ergast returned empty response for last race results.");
+
+        return response.MRData.RaceTable.Races.Count == 0
+            ? null
+            : response.MRData.RaceTable.Races[0];
+    }
 }

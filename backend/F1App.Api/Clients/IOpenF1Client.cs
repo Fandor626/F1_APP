@@ -11,4 +11,5 @@ public interface IOpenF1Client
     Task<IReadOnlyList<OpenF1StintDto>> GetLatestStintsAsync(CancellationToken ct);
     // Incremental — uses date_start (not date!) as the filter field
     Task<IReadOnlyList<OpenF1LapDto>> GetLatestLapsAsync(DateTimeOffset since, CancellationToken ct);
+    Task<IReadOnlyList<OpenF1LocationDto>> GetLatestLocationsAsync(DateTimeOffset since, CancellationToken ct);
 }

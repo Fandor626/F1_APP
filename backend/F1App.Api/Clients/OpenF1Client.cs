@@ -41,4 +41,13 @@ public class OpenF1Client(HttpClient httpClient) : IOpenF1Client
 
         return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1LapDto>>(url, ct) ?? [];
     }
+
+    public async Task<IReadOnlyList<OpenF1LocationDto>> GetLatestLocationsAsync(DateTimeOffset since, CancellationToken ct)
+    {
+        var url = since == DateTimeOffset.MinValue
+            ? "location?session_key=latest"
+            : $"location?session_key=latest&date>{since:yyyy-MM-ddTHH:mm:ss.fff}";
+
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1LocationDto>>(url, ct) ?? [];
+    }
 }

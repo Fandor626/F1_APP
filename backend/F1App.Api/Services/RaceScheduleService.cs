@@ -59,6 +59,36 @@ public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache,
             .ToList();
     }
 
+    public async Task<LastRaceResult?> GetLastRaceResultAsync(CancellationToken cancellationToken)
+    {
+        if (cache.TryGetValue(CacheKeys.LastRaceResult, out LastRaceResult? cached) && cached is not null)
+            return cached;
+
+        var raceData = await ergastClient.GetLastRaceResultsAsync(cancellationToken);
+        if (raceData is null) return null;
+
+        var drivers = raceData.Results
+            .Select((result, idx) => new DriverState
+            {
+                DriverNumber = int.TryParse(result.Number, out var num) ? num : idx + 1,
+                DriverCode = result.Driver.Code
+                    ?? result.Driver.FamilyName[..Math.Min(3, result.Driver.FamilyName.Length)].ToUpperInvariant(),
+                TeamName = result.Constructor.Name,
+                TeamColour = "555555",
+                Position = int.TryParse(result.Position, out var pos) ? pos : idx + 1,
+                GapToCarAhead = idx == 0 ? null : result.Time?.Time,
+                GapIsStale = false,
+                TyreCompound = null,
+                StintLaps = null,
+                ChampionshipDelta = null,
+            })
+            .ToList();
+
+        var lastResult = new LastRaceResult(raceData.RaceName, raceData.Date, drivers);
+        cache.Set(CacheKeys.LastRaceResult, lastResult, ResultsCacheTtl);
+        return lastResult;
+    }
+
     public async Task<RaceWeekendDetail?> GetRaceDetailAsync(int round, CancellationToken cancellationToken)
     {
         var races = await GetCachedRacesAsync(cancellationToken);

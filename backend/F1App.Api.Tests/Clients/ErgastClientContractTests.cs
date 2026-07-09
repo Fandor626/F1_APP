@@ -215,5 +215,81 @@ public class ErgastClientContractTests : IDisposable
         Assert.Empty(results);
     }
 
+    [Fact]
+    public async Task GetLastRaceResultsAsync_ParsesRaceNameAndResultsFromCurrentLastJson()
+    {
+        _server
+            .Given(Request.Create().WithPath("/current/last/results.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    RaceTable = new
+                    {
+                        Races = new[]
+                        {
+                            new
+                            {
+                                raceName = "Canadian Grand Prix",
+                                date = "2026-06-08",
+                                Results = new[]
+                                {
+                                    new
+                                    {
+                                        position = "1",
+                                        number = "4",
+                                        Driver = new { driverId = "norris", givenName = "Lando", familyName = "Norris", code = "NOR" },
+                                        Constructor = new { constructorId = "mclaren", name = "McLaren" },
+                                        Time = new { time = "1:32:13.576" },
+                                        status = "Finished",
+                                    },
+                                    new
+                                    {
+                                        position = "2",
+                                        number = "81",
+                                        Driver = new { driverId = "piastri", givenName = "Oscar", familyName = "Piastri", code = "PIA" },
+                                        Constructor = new { constructorId = "mclaren", name = "McLaren" },
+                                        Time = new { time = "+5.014" },
+                                        status = "Finished",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var result = await client.GetLastRaceResultsAsync(CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("Canadian Grand Prix", result.RaceName);
+        Assert.Equal(2, result.Results.Count);
+        Assert.Equal("1", result.Results[0].Position);
+        Assert.Equal("NOR", result.Results[0].Driver.Code);
+        Assert.Equal("McLaren", result.Results[0].Constructor.Name);
+        Assert.Equal("+5.014", result.Results[1].Time?.Time);
+    }
+
+    [Fact]
+    public async Task GetLastRaceResultsAsync_ReturnsNullWhenNoCompletedRaceThisSeason()
+    {
+        _server
+            .Given(Request.Create().WithPath("/current/last/results.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { RaceTable = new { Races = Array.Empty<object>() } },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var result = await client.GetLastRaceResultsAsync(CancellationToken.None);
+
+        Assert.Null(result);
+    }
+
     public void Dispose() => _server.Stop();
 }

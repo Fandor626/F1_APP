@@ -12,4 +12,6 @@ public record DriverState
     public string? TyreCompound { get; init; }
     public int? StintLaps { get; init; }
     public string? ChampionshipDelta { get; init; }
+    public double? X { get; init; }
+    public double? Y { get; init; }
 }

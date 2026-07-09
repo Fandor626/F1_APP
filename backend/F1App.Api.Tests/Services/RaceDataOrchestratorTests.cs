@@ -66,6 +66,9 @@ public class RaceDataOrchestratorTests
     private static LapTimeEntry MakeLap(int lapNum, double? duration, bool isPitOut = false) =>
         new(lapNum, duration, isPitOut);
 
+    private static OpenF1LocationDto MakeLocation(int driverNum, double x, double y, DateTimeOffset date) =>
+        new(driverNum, x, y, date);
+
     private static DriverStanding MakeStanding(string driverName, decimal points, int position = 1) =>
         new(position, driverName.ToLowerInvariant(), driverName, $"First {driverName}", "Team", points);
 
@@ -398,5 +401,184 @@ public class RaceDataOrchestratorTests
         var snapshot = sut.BuildSnapshot();
 
         Assert.Null(snapshot.Drivers[0].ChampionshipDelta);
+    }
+
+    // EvaluateSessionMode tests
+
+    [Fact]
+    public void EvaluateSessionMode_NoDataYet_ReturnsLive()
+    {
+        var sut = CreateOrchestrator();
+        Assert.Equal(SessionMode.Live, sut.EvaluateSessionMode());
+    }
+
+    [Fact]
+    public void EvaluateSessionMode_RecentData_ReturnsLive()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._lastValidPositionTime = now.AddSeconds(-5);
+        Assert.Equal(SessionMode.Live, sut.EvaluateSessionMode());
+    }
+
+    [Fact]
+    public void EvaluateSessionMode_Data11sAgo_ReturnsStale()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._lastValidPositionTime = now.AddSeconds(-11);
+        Assert.Equal(SessionMode.Stale, sut.EvaluateSessionMode());
+    }
+
+    [Fact]
+    public void EvaluateSessionMode_Data21sAgo_ReturnsFallback()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._lastValidPositionTime = now.AddSeconds(-21);
+        Assert.Equal(SessionMode.Fallback, sut.EvaluateSessionMode());
+    }
+
+    [Fact]
+    public void EvaluateSessionMode_RecoveryFromFallbackFirstGoodPoll_ReturnsStale()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._lastValidPositionTime = now.AddSeconds(-25);
+        sut._sessionMode = SessionMode.Fallback;
+        sut._consecutiveGoodPolls = 1;
+        Assert.Equal(SessionMode.Stale, sut.EvaluateSessionMode());
+    }
+
+    [Fact]
+    public void EvaluateSessionMode_RecoveryFromStale4GoodPolls_ReturnsLive()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._lastValidPositionTime = now.AddSeconds(-5);
+        sut._sessionMode = SessionMode.Stale;
+        sut._consecutiveGoodPolls = 4;
+        Assert.Equal(SessionMode.Live, sut.EvaluateSessionMode());
+    }
+
+    [Fact]
+    public void EvaluateSessionMode_StaleWith3GoodPolls_StaysStale()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._lastValidPositionTime = now.AddSeconds(-5);
+        sut._sessionMode = SessionMode.Stale;
+        sut._consecutiveGoodPolls = 3;
+        Assert.Equal(SessionMode.Stale, sut.EvaluateSessionMode());
+    }
+
+    [Fact]
+    public void EvaluateSessionMode_StaleDataGoesStaleAgain_ReturnsFallback()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._lastValidPositionTime = now.AddSeconds(-21);
+        sut._sessionMode = SessionMode.Stale;
+        sut._consecutiveGoodPolls = 0;
+        Assert.Equal(SessionMode.Fallback, sut.EvaluateSessionMode());
+    }
+
+    // BuildSnapshot in Fallback mode
+
+    [Fact]
+    public void BuildSnapshot_FallbackModeWithData_UsesFallbackDrivers()
+    {
+        var sut = CreateOrchestrator();
+        sut._sessionMode = SessionMode.Fallback;
+        sut._fallbackRaceName = "Canadian Grand Prix";
+        sut._fallbackDrivers =
+        [
+            new DriverState
+            {
+                DriverNumber = 4, DriverCode = "NOR", TeamName = "McLaren",
+                TeamColour = "555555", Position = 1, GapIsStale = false,
+            },
+            new DriverState
+            {
+                DriverNumber = 81, DriverCode = "PIA", TeamName = "McLaren",
+                TeamColour = "555555", Position = 2, GapToCarAhead = "+5.014", GapIsStale = false,
+            },
+        ];
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal(SessionMode.Fallback, snapshot.SessionMode);
+        Assert.Equal("Canadian Grand Prix", snapshot.FallbackRaceName);
+        Assert.Equal(2, snapshot.Drivers.Count);
+        Assert.Equal("NOR", snapshot.Drivers[0].DriverCode);
+        Assert.Equal("+5.014", snapshot.Drivers[1].GapToCarAhead);
+    }
+
+    [Fact]
+    public void BuildSnapshot_FallbackModeNoData_ReturnsEmptyDrivers()
+    {
+        var sut = CreateOrchestrator();
+        sut._sessionMode = SessionMode.Fallback;
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal(SessionMode.Fallback, snapshot.SessionMode);
+        Assert.Empty(snapshot.Drivers);
+    }
+
+    [Fact]
+    public void BuildSnapshot_LiveMode_SetsSessionModeLive()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._latestPositions[33] = MakePosition(33, 1, now);
+        sut._lastValidPositionTime = now.AddSeconds(-2);
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal(SessionMode.Live, snapshot.SessionMode);
+        Assert.Null(snapshot.FallbackRaceName);
+    }
+
+    // Location data tests
+
+    [Fact]
+    public void BuildSnapshot_WithLocationData_PopulatesXYOnDriverState()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._latestPositions[1] = MakePosition(1, 1, now);
+        sut._latestLocations[1] = MakeLocation(1, -1500.3, 823.1, now);
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Single(snapshot.Drivers);
+        Assert.Equal(-1500.3, snapshot.Drivers[0].X);
+        Assert.Equal(823.1, snapshot.Drivers[0].Y);
+    }
+
+    [Fact]
+    public void BuildSnapshot_WithoutLocationData_XYAreNull()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = CreateOrchestrator(timeProvider: new FakeTimeProvider(now));
+        sut._latestPositions[1] = MakePosition(1, 1, now);
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Single(snapshot.Drivers);
+        Assert.Null(snapshot.Drivers[0].X);
+        Assert.Null(snapshot.Drivers[0].Y);
+    }
+
+    [Fact]
+    public void BuildSnapshot_ActiveCircuitId_IncludedInSnapshot()
+    {
+        var sut = CreateOrchestrator();
+        sut._activeCircuitId = "monza";
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal("monza", snapshot.CircuitId);
     }
 }

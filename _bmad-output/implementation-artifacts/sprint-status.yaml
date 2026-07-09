@@ -62,16 +62,16 @@ development_status:
   1-7-pre-race-win-probability-widget: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-live-gap-list: done
   2-2-live-tyre-tracker: done
-  2-3-live-lap-time-chart: review
-  2-4-live-championship-impact-tracker: review
-  2-5-fallback-to-last-race: backlog
+  2-3-live-lap-time-chart: done
+  2-4-live-championship-impact-tracker: done
+  2-5-fallback-to-last-race: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-animated-live-track-map: backlog
+  epic-3: in-progress
+  3-1-animated-live-track-map: done
   3-2-mini-sector-colour-coding: backlog
   3-3-pit-window-estimator: backlog
   3-4-fastest-sector-board: backlog

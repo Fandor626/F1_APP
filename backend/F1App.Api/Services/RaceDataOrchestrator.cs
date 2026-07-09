@@ -33,6 +33,18 @@ public class RaceDataOrchestrator(
     internal IReadOnlyList<DriverStanding> _driverStandings = [];
     private Dictionary<string, DriverStanding> _standingByPrefix = new(StringComparer.OrdinalIgnoreCase);
 
+    // Fallback state machine fields
+    internal DateTimeOffset _lastValidPositionTime = DateTimeOffset.MinValue;
+    internal int _consecutiveGoodPolls = 0;
+    internal SessionMode _sessionMode = SessionMode.Live;
+    internal IReadOnlyList<DriverState> _fallbackDrivers = [];
+    internal string? _fallbackRaceName;
+
+    // Location tracking
+    internal readonly ConcurrentDictionary<int, OpenF1LocationDto> _latestLocations = new();
+    internal string? _activeCircuitId;
+    private DateTimeOffset _lastLocationPoll = DateTimeOffset.MinValue;
+
     private DateTimeOffset _lastPositionPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastIntervalPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastLapPoll = DateTimeOffset.MinValue;
@@ -64,6 +76,7 @@ public class RaceDataOrchestrator(
                 RunLoopAsync("IntervalPoller",  PollIntervalAsync,         sessionCts.Token),
                 RunLoopAsync("StintsPoller",    PollStintsAsync,           sessionCts.Token),
                 RunLoopAsync("LapsPoller",      PollLapsAsync,             sessionCts.Token),
+                RunLoopAsync("LocationPoller",  PollLocationAsync,         sessionCts.Token),
                 RunLoopAsync("PublishLoop",     PublishSnapshotLoopAsync,  sessionCts.Token)
             );
         }
@@ -86,22 +99,29 @@ public class RaceDataOrchestrator(
             var raceTable = await ergast.GetCurrentSeasonScheduleAsync(ct);
             var today = now.UtcDateTime.Date;
 
-            _raceWeekendActive = raceTable.Races.Any(race =>
+            _raceWeekendActive = false;
+            foreach (var race in raceTable.Races)
             {
                 var raceDate = DateTime.ParseExact(race.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture).Date;
                 // Weekend starts at FP1 day; fall back to 2 days before race if no FP1 data yet
                 var weekendStart = race.FirstPractice is not null
                     ? DateTime.ParseExact(race.FirstPractice.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture).Date
                     : raceDate.AddDays(-2);
-                return today >= weekendStart && today <= raceDate;
-            });
+                if (today >= weekendStart && today <= raceDate)
+                {
+                    _raceWeekendActive = true;
+                    _activeCircuitId = race.Circuit.CircuitId;
+                    break;
+                }
+            }
 
             _raceWeekendCheckExpiry = now.AddHours(1);
             logger.LogInformation("RaceDataOrchestrator: race weekend active={Active}", _raceWeekendActive);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            // Fail-open: if we can't determine the schedule, assume a race might be on
+            // Fail-open: if we can't determine the schedule, assume a race might be on.
+            // HttpClient timeouts throw TaskCanceledException — must not crash the host.
             logger.LogWarning(ex, "RaceDataOrchestrator: failed to check race weekend — assuming active");
             _raceWeekendActive = true;
             _raceWeekendCheckExpiry = now.AddMinutes(5);
@@ -118,7 +138,7 @@ public class RaceDataOrchestrator(
             _driverInfo = drivers.ToDictionary(d => d.DriverNumber);
             logger.LogInformation("RaceDataOrchestrator: loaded {Count} drivers for current session", drivers.Count);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogWarning(ex, "RaceDataOrchestrator: failed to load driver info; will use driver numbers as fallback");
         }
@@ -137,9 +157,91 @@ public class RaceDataOrchestrator(
             }
             logger.LogInformation("RaceDataOrchestrator: loaded {Count} driver standings", _driverStandings.Count);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogWarning(ex, "RaceDataOrchestrator: failed to load driver standings; championship delta unavailable");
+        }
+    }
+
+    private async Task PollLocationAsync(CancellationToken ct)
+    {
+        var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(800));
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            var locations = await openF1Client.GetLatestLocationsAsync(_lastLocationPoll, ct);
+            if (locations.Count > 0)
+                _lastLocationPoll = timeProvider.GetUtcNow();
+
+            foreach (var loc in locations)
+            {
+                _latestLocations.AddOrUpdate(
+                    loc.DriverNumber,
+                    loc,
+                    (_, existing) => loc.Date > existing.Date ? loc : existing);
+            }
+        }
+    }
+
+    internal SessionMode EvaluateSessionMode()
+    {
+        switch (_sessionMode)
+        {
+            case SessionMode.Fallback:
+                if (_consecutiveGoodPolls >= 1)
+                    return SessionMode.Stale;
+                return SessionMode.Fallback;
+
+            case SessionMode.Stale:
+                if (_consecutiveGoodPolls >= 4)
+                    return SessionMode.Live;
+                if (_lastValidPositionTime != DateTimeOffset.MinValue &&
+                    (timeProvider.GetUtcNow() - _lastValidPositionTime).TotalSeconds > 20)
+                    return SessionMode.Fallback;
+                return SessionMode.Stale;
+
+            default: // Live
+                if (_lastValidPositionTime == DateTimeOffset.MinValue)
+                    return SessionMode.Live;
+                var elapsed = (timeProvider.GetUtcNow() - _lastValidPositionTime).TotalSeconds;
+                if (elapsed > 20) return SessionMode.Fallback;
+                if (elapsed > 10) return SessionMode.Stale;
+                return SessionMode.Live;
+        }
+    }
+
+    private async Task LoadFallbackDataAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var ergast = scope.ServiceProvider.GetRequiredService<IErgastClient>();
+            var raceData = await ergast.GetLastRaceResultsAsync(ct);
+            if (raceData is null) return;
+
+            _fallbackRaceName = raceData.RaceName;
+            _fallbackDrivers = raceData.Results
+                .Select((result, idx) => new DriverState
+                {
+                    DriverNumber = int.TryParse(result.Number, out var num) ? num : idx + 1,
+                    DriverCode = result.Driver.Code
+                        ?? result.Driver.FamilyName[..Math.Min(3, result.Driver.FamilyName.Length)].ToUpperInvariant(),
+                    TeamName = result.Constructor.Name,
+                    TeamColour = "555555",
+                    Position = int.TryParse(result.Position, out var pos) ? pos : idx + 1,
+                    GapToCarAhead = idx == 0 ? null : result.Time?.Time,
+                    GapIsStale = false,
+                    TyreCompound = null,
+                    StintLaps = null,
+                    ChampionshipDelta = null,
+                })
+                .ToList();
+
+            logger.LogInformation("RaceDataOrchestrator: loaded fallback data — {RaceName}, {Count} drivers",
+                _fallbackRaceName, _fallbackDrivers.Count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "RaceDataOrchestrator: failed to load fallback race data; fallback drivers will be empty");
         }
     }
 
@@ -161,6 +263,12 @@ public class RaceDataOrchestrator(
             {
                 logger.LogWarning("RaceDataOrchestrator: {LoopName} rate-limited (429) — pausing 60s", name);
                 try { await Task.Delay(TimeSpan.FromSeconds(60), ct); }
+                catch (OperationCanceledException) { return; }
+            }
+            catch (HttpRequestException ex) when ((int?)ex.StatusCode == 401)
+            {
+                logger.LogWarning("RaceDataOrchestrator: {LoopName} received 401 Unauthorized from OpenF1 — endpoint may require auth; pausing 5m", name);
+                try { await Task.Delay(TimeSpan.FromMinutes(5), ct); }
                 catch (OperationCanceledException) { return; }
             }
             catch (Exception ex)
@@ -188,6 +296,18 @@ public class RaceDataOrchestrator(
                     pos.DriverNumber,
                     pos,
                     (_, existing) => pos.Date > existing.Date ? pos : existing);
+            }
+
+            if (positions.Count > 0)
+            {
+                _lastValidPositionTime = timeProvider.GetUtcNow();
+                _consecutiveGoodPolls = _consecutiveGoodPolls + 1;
+            }
+            else
+            {
+                if (_lastValidPositionTime == DateTimeOffset.MinValue)
+                    _lastValidPositionTime = timeProvider.GetUtcNow();
+                _consecutiveGoodPolls = 0;
             }
         }
     }
@@ -258,6 +378,16 @@ public class RaceDataOrchestrator(
         var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         while (await timer.WaitForNextTickAsync(ct))
         {
+            var newMode = EvaluateSessionMode();
+
+            if (newMode == SessionMode.Fallback && _sessionMode != SessionMode.Fallback
+                && _fallbackDrivers.Count == 0)
+            {
+                await LoadFallbackDataAsync(ct);
+            }
+
+            _sessionMode = newMode;
+
             var snapshot = BuildSnapshot();
             if (snapshot.Drivers.Count > 0)
             {
@@ -268,54 +398,72 @@ public class RaceDataOrchestrator(
 
     internal RaceStateSnapshot BuildSnapshot()
     {
-        var drivers = new List<DriverState>();
+        List<DriverState> drivers;
 
-        foreach (var (driverNum, pos) in _latestPositions)
+        if (_sessionMode == SessionMode.Fallback && _fallbackDrivers.Count > 0)
         {
-            string? gap = null;
-            bool gapIsStale = true;
-
-            if (_latestIntervals.TryGetValue(driverNum, out var interval))
-            {
-                var timeDiffMs = Math.Abs((pos.Date - interval.Date).TotalMilliseconds);
-                gapIsStale = timeDiffMs > _joinTolerance.TotalMilliseconds;
-                gap = gapIsStale ? null : interval.GapToCarAhead;
-            }
-
-            string? tyreCompound = null;
-            int? stintLaps = null;
-
-            if (_latestStints.TryGetValue(driverNum, out var stint))
-            {
-                tyreCompound = stint.Compound;
-                if (_driverCurrentLap.TryGetValue(driverNum, out var currentLap))
-                {
-                    // Total tyre age = age when this set was new + laps completed in this stint
-                    stintLaps = stint.TyreAgeAtStart + Math.Max(0, currentLap - stint.LapStart + 1);
-                }
-            }
-
-            _driverInfo.TryGetValue(driverNum, out var info);
-
-            drivers.Add(new DriverState
-            {
-                DriverNumber = driverNum,
-                DriverCode = info?.NameAcronym ?? driverNum.ToString(),
-                TeamName = info?.TeamName ?? "",
-                TeamColour = info?.TeamColour ?? "555555",
-                Position = pos.Position,
-                GapToCarAhead = gap,
-                GapIsStale = gapIsStale,
-                TyreCompound = tyreCompound,
-                StintLaps = stintLaps,
-            });
+            drivers = [.. _fallbackDrivers];
         }
-
-        if (_driverStandings.Count > 0)
+        else
         {
-            var deltaMap = ComputeChampionshipDeltas(drivers);
-            for (int i = 0; i < drivers.Count; i++)
-                drivers[i] = drivers[i] with { ChampionshipDelta = deltaMap.GetValueOrDefault(drivers[i].DriverNumber) };
+            drivers = new List<DriverState>();
+
+            foreach (var (driverNum, pos) in _latestPositions)
+            {
+                string? gap = null;
+                bool gapIsStale = true;
+
+                if (_latestIntervals.TryGetValue(driverNum, out var interval))
+                {
+                    var timeDiffMs = Math.Abs((pos.Date - interval.Date).TotalMilliseconds);
+                    gapIsStale = timeDiffMs > _joinTolerance.TotalMilliseconds;
+                    gap = gapIsStale ? null : interval.GapToCarAhead;
+                }
+
+                string? tyreCompound = null;
+                int? stintLaps = null;
+
+                if (_latestStints.TryGetValue(driverNum, out var stint))
+                {
+                    tyreCompound = stint.Compound;
+                    if (_driverCurrentLap.TryGetValue(driverNum, out var currentLap))
+                    {
+                        // Total tyre age = age when this set was new + laps completed in this stint
+                        stintLaps = stint.TyreAgeAtStart + Math.Max(0, currentLap - stint.LapStart + 1);
+                    }
+                }
+
+                _driverInfo.TryGetValue(driverNum, out var info);
+
+                double? x = null, y = null;
+                if (_latestLocations.TryGetValue(driverNum, out var loc))
+                {
+                    x = loc.X;
+                    y = loc.Y;
+                }
+
+                drivers.Add(new DriverState
+                {
+                    DriverNumber = driverNum,
+                    DriverCode = info?.NameAcronym ?? driverNum.ToString(),
+                    TeamName = info?.TeamName ?? "",
+                    TeamColour = info?.TeamColour ?? "555555",
+                    Position = pos.Position,
+                    GapToCarAhead = gap,
+                    GapIsStale = gapIsStale,
+                    TyreCompound = tyreCompound,
+                    StintLaps = stintLaps,
+                    X = x,
+                    Y = y,
+                });
+            }
+
+            if (_driverStandings.Count > 0)
+            {
+                var deltaMap = ComputeChampionshipDeltas(drivers);
+                for (int i = 0; i < drivers.Count; i++)
+                    drivers[i] = drivers[i] with { ChampionshipDelta = deltaMap.GetValueOrDefault(drivers[i].DriverNumber) };
+            }
         }
 
         var lapChart = new Dictionary<int, IReadOnlyList<LapTimeEntry>>();
@@ -330,6 +478,9 @@ public class RaceDataOrchestrator(
             CapturedAt = timeProvider.GetUtcNow(),
             Drivers = [.. drivers.OrderBy(d => d.Position)],
             LapChart = lapChart,
+            SessionMode = _sessionMode,
+            FallbackRaceName = _fallbackRaceName,
+            CircuitId = _activeCircuitId,
         };
     }
 

@@ -20,6 +20,8 @@ function makeDriver(
     tyreCompound: null,
     stintLaps: null,
     championshipDelta: null,
+    x: null,
+    y: null,
     ...overrides,
   }
 }
@@ -29,6 +31,9 @@ beforeEach(() => {
     drivers: {},
     connectionStatus: 'disconnected',
     lastSnapshotTime: null,
+    sessionMode: 'live',
+    fallbackRaceName: null,
+    circuitId: null,
   })
 })
 
