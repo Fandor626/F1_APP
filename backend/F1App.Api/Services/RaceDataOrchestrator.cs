@@ -49,6 +49,10 @@ public class RaceDataOrchestrator(
     private double _sessionBestS1 = double.MaxValue;
     private double _sessionBestS2 = double.MaxValue;
     private double _sessionBestS3 = double.MaxValue;
+    // Driver number currently holding each session-best sector time (null = none yet)
+    private int? _sessionBestS1Driver;
+    private int? _sessionBestS2Driver;
+    private int? _sessionBestS3Driver;
     internal readonly ConcurrentDictionary<int, double[]> _personalBestSectors = new();
     internal readonly ConcurrentDictionary<int, string> _latestSectorStatus = new();
 
@@ -424,9 +428,9 @@ public class RaceDataOrchestrator(
         var time = sectorTime.Value;
 
         bool isSessionBest;
-        if (sectorIndex == 0) { isSessionBest = time < _sessionBestS1; if (isSessionBest) _sessionBestS1 = time; }
-        else if (sectorIndex == 1) { isSessionBest = time < _sessionBestS2; if (isSessionBest) _sessionBestS2 = time; }
-        else { isSessionBest = time < _sessionBestS3; if (isSessionBest) _sessionBestS3 = time; }
+        if (sectorIndex == 0) { isSessionBest = time < _sessionBestS1; if (isSessionBest) { _sessionBestS1 = time; _sessionBestS1Driver = lap.DriverNumber; } }
+        else if (sectorIndex == 1) { isSessionBest = time < _sessionBestS2; if (isSessionBest) { _sessionBestS2 = time; _sessionBestS2Driver = lap.DriverNumber; } }
+        else { isSessionBest = time < _sessionBestS3; if (isSessionBest) { _sessionBestS3 = time; _sessionBestS3Driver = lap.DriverNumber; } }
 
         var personal = _personalBestSectors.GetOrAdd(lap.DriverNumber, _ => [double.MaxValue, double.MaxValue, double.MaxValue]);
         var isPersonalBest = time < personal[sectorIndex];
@@ -554,7 +558,33 @@ public class RaceDataOrchestrator(
             SessionMode = _sessionMode,
             FallbackRaceName = _fallbackRaceName,
             CircuitId = _activeCircuitId,
+            FastestSectors = BuildFastestSectorBoard(),
         };
+    }
+
+    // Ergast has no sector-time archive, so the board is only meaningful during a
+    // live/stale session; fallback replay (Story 2.5) always returns null here,
+    // matching MiniSectorStatus's existing fallback behaviour.
+    private FastestSectorBoard? BuildFastestSectorBoard()
+    {
+        if (_sessionMode == SessionMode.Fallback)
+            return null;
+
+        FastestSectorEntry? MakeEntry(double best, int? driverNum)
+        {
+            if (driverNum is null || best == double.MaxValue) return null;
+            _driverInfo.TryGetValue(driverNum.Value, out var info);
+            return new FastestSectorEntry(
+                driverNum.Value,
+                info?.NameAcronym ?? driverNum.Value.ToString(),
+                info?.TeamColour ?? "555555",
+                best);
+        }
+
+        return new FastestSectorBoard(
+            MakeEntry(_sessionBestS1, _sessionBestS1Driver),
+            MakeEntry(_sessionBestS2, _sessionBestS2Driver),
+            MakeEntry(_sessionBestS3, _sessionBestS3Driver));
     }
 
     internal static int RacePointsForPosition(int position) => position switch

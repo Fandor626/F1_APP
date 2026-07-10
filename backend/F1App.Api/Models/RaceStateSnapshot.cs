@@ -10,4 +10,5 @@ public record RaceStateSnapshot
     public SessionMode SessionMode { get; init; } = SessionMode.Live;
     public string? FallbackRaceName { get; init; }
     public string? CircuitId { get; init; }
+    public FastestSectorBoard? FastestSectors { get; init; }
 }

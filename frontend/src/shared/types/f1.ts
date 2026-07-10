@@ -21,6 +21,19 @@ export interface DriverState {
   pitWindowActive: boolean
 }
 
+export interface FastestSectorEntry {
+  driverNumber: number
+  driverCode: string
+  teamColour: string
+  timeSeconds: number
+}
+
+export interface FastestSectorBoard {
+  s1: FastestSectorEntry | null
+  s2: FastestSectorEntry | null
+  s3: FastestSectorEntry | null
+}
+
 export interface RaceStateSnapshot {
   capturedAt: string
   drivers: DriverState[]
@@ -29,6 +42,7 @@ export interface RaceStateSnapshot {
   sessionMode: 'live' | 'stale' | 'fallback'
   fallbackRaceName: string | null
   circuitId: string | null
+  fastestSectors: FastestSectorBoard | null
 }
 
 export interface LastRaceResult {

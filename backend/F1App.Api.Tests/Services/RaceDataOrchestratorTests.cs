@@ -693,4 +693,96 @@ public class RaceDataOrchestratorTests
 
         Assert.False(snapshot.Drivers[0].PitWindowActive);
     }
+
+    [Fact]
+    public void BuildSnapshot_NoSectorTimesYet_FastestSectorsAllNull()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[1] = MakePosition(1, 1, DateTimeOffset.UtcNow);
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.NotNull(snapshot.FastestSectors);
+        Assert.Null(snapshot.FastestSectors!.S1);
+        Assert.Null(snapshot.FastestSectors.S2);
+        Assert.Null(snapshot.FastestSectors.S3);
+    }
+
+    [Fact]
+    public void BuildSnapshot_OneDriverSetsS1_BecomesHolder()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[44] = MakePosition(44, 1, DateTimeOffset.UtcNow);
+        sut.ComputeSectorStatus(MakeLapWithSectors(44, 1, s1: 28.5));
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal(44, snapshot.FastestSectors!.S1!.DriverNumber);
+        Assert.Equal(28.5, snapshot.FastestSectors.S1.TimeSeconds);
+    }
+
+    [Fact]
+    public void BuildSnapshot_SecondDriverBeatsS1_HolderSwitches()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[44] = MakePosition(44, 1, DateTimeOffset.UtcNow);
+        sut._latestPositions[1] = MakePosition(1, 2, DateTimeOffset.UtcNow);
+        sut.ComputeSectorStatus(MakeLapWithSectors(44, 1, s1: 28.5));
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 1, s1: 28.1));
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal(1, snapshot.FastestSectors!.S1!.DriverNumber);
+        Assert.Equal(28.1, snapshot.FastestSectors.S1.TimeSeconds);
+    }
+
+    [Fact]
+    public void BuildSnapshot_SlowerSectorTime_DoesNotDisplaceExistingHolder()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[44] = MakePosition(44, 1, DateTimeOffset.UtcNow);
+        sut._latestPositions[1] = MakePosition(1, 2, DateTimeOffset.UtcNow);
+        sut.ComputeSectorStatus(MakeLapWithSectors(44, 1, s1: 28.1));
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 1, s1: 28.5)); // slower — should not take the lead
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal(44, snapshot.FastestSectors!.S1!.DriverNumber);
+        Assert.Equal(28.1, snapshot.FastestSectors.S1.TimeSeconds);
+    }
+
+    [Fact]
+    public void BuildSnapshot_AllThreeSectorsIndependent_EachTracksOwnHolder()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[44] = MakePosition(44, 1, DateTimeOffset.UtcNow);
+        sut._latestPositions[1] = MakePosition(1, 2, DateTimeOffset.UtcNow);
+        // ComputeSectorStatus only processes the most-recently-completed sector per
+        // call (S3 > S2 > S1 priority) — mimic OpenF1's progressive per-sector
+        // updates within a lap by calling once per sector as it completes.
+        sut.ComputeSectorStatus(MakeLapWithSectors(44, 1, s1: 28.1));
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 1, s1: 28.5));
+        sut.ComputeSectorStatus(MakeLapWithSectors(44, 1, s1: 28.1, s2: 40.0));
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 1, s1: 28.5, s2: 39.5));
+        sut.ComputeSectorStatus(MakeLapWithSectors(44, 1, s1: 28.1, s2: 40.0, s3: 25.0));
+        sut.ComputeSectorStatus(MakeLapWithSectors(1, 1, s1: 28.5, s2: 39.5, s3: 25.5));
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal(44, snapshot.FastestSectors!.S1!.DriverNumber); // 44 faster S1
+        Assert.Equal(1, snapshot.FastestSectors.S2!.DriverNumber);   // 1 faster S2
+        Assert.Equal(44, snapshot.FastestSectors.S3!.DriverNumber);  // 44 faster S3
+    }
+
+    [Fact]
+    public void BuildSnapshot_FallbackMode_FastestSectorsIsNull()
+    {
+        var sut = CreateOrchestrator();
+        sut._sessionMode = SessionMode.Fallback;
+        sut._fallbackDrivers = [new DriverState { DriverNumber = 1, Position = 1 }];
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Null(snapshot.FastestSectors);
+    }
 }

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DriverState, LapTimeEntry } from '../../../shared/types/f1'
+import type { DriverState, FastestSectorBoard, LapTimeEntry } from '../../../shared/types/f1'
 
 type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected'
 type SessionMode = 'live' | 'stale' | 'fallback'
@@ -11,6 +11,7 @@ interface LiveRaceState {
   circuitId: string | null
   drivers: Record<string, DriverState>
   lapChart: Record<string, LapTimeEntry[]>
+  fastestSectors: FastestSectorBoard | null
   lastSnapshotTime: Date | null
   setConnectionStatus: (status: ConnectionStatus) => void
   setSessionMode: (mode: SessionMode) => void
@@ -18,6 +19,7 @@ interface LiveRaceState {
   setCircuitId: (id: string | null) => void
   setDrivers: (drivers: Record<string, DriverState>) => void
   setLapChart: (lapChart: Record<string, LapTimeEntry[]>) => void
+  setFastestSectors: (fastestSectors: FastestSectorBoard | null) => void
   setLastSnapshotTime: (time: Date) => void
 }
 
@@ -28,6 +30,7 @@ export const useLiveRaceStore = create<LiveRaceState>((set) => ({
   circuitId: null,
   drivers: {},
   lapChart: {},
+  fastestSectors: null,
   lastSnapshotTime: null,
   setConnectionStatus: (status) => set({ connectionStatus: status }),
   setSessionMode: (mode) => set({ sessionMode: mode }),
@@ -35,5 +38,6 @@ export const useLiveRaceStore = create<LiveRaceState>((set) => ({
   setCircuitId: (id) => set({ circuitId: id }),
   setDrivers: (drivers) => set({ drivers }),
   setLapChart: (lapChart) => set({ lapChart }),
+  setFastestSectors: (fastestSectors) => set({ fastestSectors }),
   setLastSnapshotTime: (time) => set({ lastSnapshotTime: time }),
 }))

@@ -18,6 +18,7 @@ export function useSignalRConnection() {
   const setSessionMode = useLiveRaceStore(s => s.setSessionMode)
   const setFallbackRaceName = useLiveRaceStore(s => s.setFallbackRaceName)
   const setCircuitId = useLiveRaceStore(s => s.setCircuitId)
+  const setFastestSectors = useLiveRaceStore(s => s.setFastestSectors)
 
   useEffect(() => {
     const handleSnapshot = (snapshot: RaceSnapshotMessage) => {
@@ -27,6 +28,7 @@ export function useSignalRConnection() {
       setSessionMode(snapshot.sessionMode ?? 'live')
       if (snapshot.fallbackRaceName) setFallbackRaceName(snapshot.fallbackRaceName)
       if (snapshot.circuitId) setCircuitId(snapshot.circuitId)
+      setFastestSectors(snapshot.fastestSectors ?? null)
     }
 
     raceHubConnection.on('RaceSnapshot', handleSnapshot)
@@ -58,5 +60,5 @@ export function useSignalRConnection() {
       raceHubConnection.off('RaceSnapshot', handleSnapshot)
       window.clearTimeout(noDataTimeout)
     }
-  }, [setConnectionStatus, setDrivers, setLapChart, setLastSnapshotTime, setSessionMode, setFallbackRaceName, setCircuitId])
+  }, [setConnectionStatus, setDrivers, setLapChart, setLastSnapshotTime, setSessionMode, setFallbackRaceName, setCircuitId, setFastestSectors])
 }
