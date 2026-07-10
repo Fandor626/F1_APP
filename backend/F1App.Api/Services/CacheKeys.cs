@@ -17,4 +17,6 @@ public static class CacheKeys
     public static string PitWindowBaseline(string circuitId) => $"pitWindow:{circuitId}";
 
     public static string CircuitProfile(string circuitId) => $"circuit:profile:{circuitId}";
+
+    public static string DriverProfile(string driverId) => $"driver:profile:{driverId}";
 }

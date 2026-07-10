@@ -25,4 +25,10 @@ public interface IErgastClient
     Task<ErgastCircuitDto?> GetCircuitInfoAsync(string circuitId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ErgastRaceResultRaceDto>> GetAllCircuitResultsAsync(string circuitId, CancellationToken cancellationToken);
+
+    Task<ErgastDriverDto?> GetDriverInfoAsync(string driverId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ErgastRaceResultRaceDto>> GetAllDriverResultsAsync(string driverId, CancellationToken cancellationToken);
+
+    Task<ErgastDriverStandingDto?> GetSeasonChampionAsync(int season, CancellationToken cancellationToken);
 }

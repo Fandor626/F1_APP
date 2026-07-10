@@ -135,4 +135,38 @@ public class ErgastClient(HttpClient httpClient) : IErgastClient
 
         return response.MRData.RaceTable.Races;
     }
+
+    public async Task<ErgastDriverDto?> GetDriverInfoAsync(string driverId, CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastDriverInfoResponseDto>(
+            $"drivers/{driverId}.json", cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for driver {driverId}.");
+
+        return response.MRData.DriverTable.Drivers.Count == 0
+            ? null
+            : response.MRData.DriverTable.Drivers[0];
+    }
+
+    public async Task<IReadOnlyList<ErgastRaceResultRaceDto>> GetAllDriverResultsAsync(string driverId, CancellationToken cancellationToken)
+    {
+        // limit=1000 comfortably covers any F1 career to date (most-raced
+        // drivers sit around 350-400 starts).
+        var response = await httpClient.GetFromJsonAsync<ErgastRaceResultResponseDto>(
+            $"drivers/{driverId}/results.json?limit=1000", cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for {driverId} results.");
+
+        return response.MRData.RaceTable.Races;
+    }
+
+    public async Task<ErgastDriverStandingDto?> GetSeasonChampionAsync(int season, CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastDriverStandingsResponseDto>(
+            $"{season}/driverStandings/1.json", cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for the {season} champion.");
+
+        var lists = response.MRData.StandingsTable.StandingsLists;
+        return lists.Count == 0 || lists[0].DriverStandings.Count == 0
+            ? null
+            : lists[0].DriverStandings[0];
+    }
 }

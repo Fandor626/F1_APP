@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw'
 import type {
   CircuitProfile,
   ConstructorStanding,
+  DriverProfile,
   DriverStanding,
   DriverTrajectory,
   RaceWeekend,
@@ -37,14 +38,14 @@ export const sampleRaceSchedule: RaceWeekend[] = [
 ]
 
 export const sampleDriverStandings: DriverStanding[] = [
-  { position: 1, driverName: 'Norris', constructorName: 'McLaren', points: 298, wins: 7, nationality: 'British' },
-  { position: 2, driverName: 'Verstappen', constructorName: 'Red Bull Racing', points: 277, wins: 5, nationality: 'Dutch' },
-  { position: 3, driverName: 'Leclerc', constructorName: 'Ferrari', points: 229, wins: 2, nationality: 'Monegasque' },
-  { position: 4, driverName: 'Piastri', constructorName: 'McLaren', points: 214, wins: 3, nationality: 'Australian' },
-  { position: 5, driverName: 'Russell', constructorName: 'Mercedes', points: 187, wins: 1, nationality: 'British' },
-  { position: 6, driverName: 'Hamilton', constructorName: 'Ferrari', points: 163, wins: 0, nationality: 'British' },
-  { position: 7, driverName: 'Antonelli', constructorName: 'Mercedes', points: 121, wins: 0, nationality: 'Italian' },
-  { position: 8, driverName: 'Pérez', constructorName: 'Red Bull Racing', points: 98, wins: 0, nationality: 'Mexican' },
+  { position: 1, driverId: 'norris', driverName: 'Norris', constructorName: 'McLaren', points: 298, wins: 7, nationality: 'British' },
+  { position: 2, driverId: 'max_verstappen', driverName: 'Verstappen', constructorName: 'Red Bull Racing', points: 277, wins: 5, nationality: 'Dutch' },
+  { position: 3, driverId: 'leclerc', driverName: 'Leclerc', constructorName: 'Ferrari', points: 229, wins: 2, nationality: 'Monegasque' },
+  { position: 4, driverId: 'piastri', driverName: 'Piastri', constructorName: 'McLaren', points: 214, wins: 3, nationality: 'Australian' },
+  { position: 5, driverId: 'russell', driverName: 'Russell', constructorName: 'Mercedes', points: 187, wins: 1, nationality: 'British' },
+  { position: 6, driverId: 'hamilton', driverName: 'Hamilton', constructorName: 'Ferrari', points: 163, wins: 0, nationality: 'British' },
+  { position: 7, driverId: 'antonelli', driverName: 'Antonelli', constructorName: 'Mercedes', points: 121, wins: 0, nationality: 'Italian' },
+  { position: 8, driverId: 'perez', driverName: 'Pérez', constructorName: 'Red Bull Racing', points: 98, wins: 0, nationality: 'Mexican' },
 ]
 
 export const sampleConstructorStandings: ConstructorStanding[] = [
@@ -166,6 +167,22 @@ export const sampleCircuitProfile: CircuitProfile = {
   stats: { lengthKm: 5.793, corners: 11, drsZones: 2 },
 }
 
+export const sampleDriverProfile: DriverProfile = {
+  driverId: 'max_verstappen',
+  fullName: 'Max Verstappen',
+  nationality: 'Dutch',
+  careerTotals: { races: 218, wins: 65, podiums: 116, poles: 44, fastestLaps: 33, titles: 4 },
+  constructorHistory: [
+    { season: 2015, constructorNames: ['Toro Rosso'] },
+    { season: 2016, constructorNames: ['Toro Rosso', 'Red Bull Racing'] },
+    { season: 2024, constructorNames: ['Red Bull Racing'] },
+  ],
+  careerPoints: [
+    { season: 2024, round: 1, raceName: 'Bahrain Grand Prix', pointsThisRound: 26, cumulativePoints: 26 },
+    { season: 2024, round: 2, raceName: 'Saudi Arabian Grand Prix', pointsThisRound: 25, cumulativePoints: 51 },
+  ],
+}
+
 export const ergastHandlers = [
   http.get(`${API_BASE_URL}/api/races`, () => HttpResponse.json(sampleRaceSchedule)),
   http.get(`${API_BASE_URL}/api/standings/drivers`, () => HttpResponse.json(sampleDriverStandings)),
@@ -180,6 +197,11 @@ export const ergastHandlers = [
   http.get(`${API_BASE_URL}/api/circuits/:circuitId`, ({ params }) => {
     return params.circuitId === sampleCircuitProfile.circuitId
       ? HttpResponse.json(sampleCircuitProfile)
+      : new HttpResponse(null, { status: 404 })
+  }),
+  http.get(`${API_BASE_URL}/api/drivers/:driverId`, ({ params }) => {
+    return params.driverId === sampleDriverProfile.driverId
+      ? HttpResponse.json(sampleDriverProfile)
       : new HttpResponse(null, { status: 404 })
   }),
 ]

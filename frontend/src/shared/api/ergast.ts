@@ -20,6 +20,7 @@ export type RaceWeekend = z.infer<typeof RaceWeekendSchema>
 
 const DriverStandingSchema = z.object({
   position: z.number(),
+  driverId: z.string(),
   driverName: z.string(),
   constructorName: z.string(),
   points: z.number(),
@@ -184,6 +185,25 @@ async function fetchJson<T>(path: string, schema: z.ZodType<T>, querySignal: Abo
   return schema.parse(await response.json())
 }
 
+// For "profile" endpoints (circuit, driver) where a 404 is a legitimate
+// "not found" outcome to render, not an error state.
+async function fetchNullable404Json<T>(path: string, schema: z.ZodType<T>, querySignal: AbortSignal): Promise<T | null> {
+  if (!API_BASE_URL) {
+    throw new Error('VITE_API_BASE_URL is not set — copy .env.example to .env.local')
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    signal: AbortSignal.any([querySignal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
+  })
+
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw new Error(`Request to ${path} failed: ${response.status}`)
+  }
+
+  return schema.parse(await response.json())
+}
+
 export function useRaceSchedule() {
   return useQuery({
     queryKey: queryKeys.races,
@@ -280,29 +300,56 @@ const CircuitProfileSchema = z.object({
 
 export type CircuitProfile = z.infer<typeof CircuitProfileSchema>
 
-async function fetchCircuitProfile(circuitId: string, signal: AbortSignal): Promise<CircuitProfile | null> {
-  if (!API_BASE_URL) {
-    throw new Error('VITE_API_BASE_URL is not set — copy .env.example to .env.local')
-  }
-
-  const response = await fetch(`${API_BASE_URL}/api/circuits/${circuitId}`, {
-    signal: AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
-  })
-
-  if (response.status === 404) return null
-  if (!response.ok) {
-    throw new Error(`Request to /api/circuits/${circuitId} failed: ${response.status}`)
-  }
-
-  return CircuitProfileSchema.parse(await response.json())
-}
-
 export function useCircuitProfile(circuitId: string | undefined) {
   return useQuery({
     queryKey: queryKeys.circuitProfile(circuitId ?? ''),
-    queryFn: ({ signal }) => fetchCircuitProfile(circuitId!, signal),
+    queryFn: ({ signal }) => fetchNullable404Json(`/api/circuits/${circuitId}`, CircuitProfileSchema, signal),
     staleTime: HISTORICAL_STALE_TIME_MS,
     enabled: !!circuitId,
+    retry: false,
+  })
+}
+
+const DriverCareerTotalsSchema = z.object({
+  races: z.number(),
+  wins: z.number(),
+  podiums: z.number(),
+  poles: z.number(),
+  fastestLaps: z.number(),
+  titles: z.number(),
+})
+
+const ConstructorHistoryEntrySchema = z.object({
+  season: z.number(),
+  constructorNames: z.array(z.string()),
+})
+
+const DriverCareerPointSchema = z.object({
+  season: z.number(),
+  round: z.number(),
+  raceName: z.string(),
+  pointsThisRound: z.number(),
+  cumulativePoints: z.number(),
+})
+
+const DriverProfileSchema = z.object({
+  driverId: z.string(),
+  fullName: z.string(),
+  nationality: z.string(),
+  careerTotals: DriverCareerTotalsSchema,
+  constructorHistory: z.array(ConstructorHistoryEntrySchema),
+  careerPoints: z.array(DriverCareerPointSchema),
+})
+
+export type DriverProfile = z.infer<typeof DriverProfileSchema>
+export type DriverCareerPoint = z.infer<typeof DriverCareerPointSchema>
+
+export function useDriverProfile(driverId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.driverProfile(driverId ?? ''),
+    queryFn: ({ signal }) => fetchNullable404Json(`/api/drivers/${driverId}`, DriverProfileSchema, signal),
+    staleTime: HISTORICAL_STALE_TIME_MS,
+    enabled: !!driverId,
     retry: false,
   })
 }

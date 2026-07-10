@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useDriverStandings } from '../../shared/api/ergast'
 import { CountryFlag } from '../../shared/components/CountryFlag'
 import { constructorColor } from './constructorColors'
@@ -65,7 +66,12 @@ export function DriversStandingsTable() {
                     style={{ backgroundColor: constructorColor(standing.constructorName) }}
                   />
                   {country && <CountryFlag country={country} className="mr-0.5" />}
-                  <span className="font-semibold text-text-primary">{standing.driverName}</span>
+                  <Link
+                    to={`/drivers/${standing.driverId}`}
+                    className="font-semibold text-text-primary hover:text-accent-editorial hover:underline"
+                  >
+                    {standing.driverName}
+                  </Link>
                 </div>
               </td>
               <td className="border-b border-bg-card-hover px-2.5 py-[11px] text-text-secondary">

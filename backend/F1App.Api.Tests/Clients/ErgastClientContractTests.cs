@@ -574,5 +574,159 @@ public class ErgastClientContractTests : IDisposable
         Assert.Equal("1:26.720", races[1].Results[0].FastestLap?.Time?.Time);
     }
 
+    [Fact]
+    public async Task GetDriverInfoAsync_ParsesDriverBio()
+    {
+        _server
+            .Given(Request.Create().WithPath("/drivers/max_verstappen.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    DriverTable = new
+                    {
+                        Drivers = new[]
+                        {
+                            new { driverId = "max_verstappen", givenName = "Max", familyName = "Verstappen", nationality = "Dutch" },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var driver = await client.GetDriverInfoAsync("max_verstappen", CancellationToken.None);
+
+        Assert.NotNull(driver);
+        Assert.Equal("Max", driver!.GivenName);
+        Assert.Equal("Verstappen", driver.FamilyName);
+        Assert.Equal("Dutch", driver.Nationality);
+    }
+
+    [Fact]
+    public async Task GetDriverInfoAsync_ReturnsNullWhenDriverIdUnknown()
+    {
+        _server
+            .Given(Request.Create().WithPath("/drivers/not_a_driver.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { DriverTable = new { Drivers = Array.Empty<object>() } },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var driver = await client.GetDriverInfoAsync("not_a_driver", CancellationToken.None);
+
+        Assert.Null(driver);
+    }
+
+    [Fact]
+    public async Task GetAllDriverResultsAsync_ParsesMultipleSeasonsOfRaces()
+    {
+        _server
+            .Given(Request.Create().WithPath("/drivers/max_verstappen/results.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    RaceTable = new
+                    {
+                        Races = new[]
+                        {
+                            new
+                            {
+                                season = "2015",
+                                round = "1",
+                                raceName = "Australian Grand Prix",
+                                Results = new[]
+                                {
+                                    new
+                                    {
+                                        position = "13",
+                                        grid = "11",
+                                        status = "Engine",
+                                        points = "0",
+                                        Driver = new { driverId = "max_verstappen", givenName = "Max", familyName = "Verstappen" },
+                                        Constructor = new { constructorId = "toro_rosso", name = "Toro Rosso" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var races = await client.GetAllDriverResultsAsync("max_verstappen", CancellationToken.None);
+
+        var race = Assert.Single(races);
+        Assert.Equal("2015", race.Season);
+        Assert.Equal("11", race.Results[0].Grid);
+        Assert.Equal("Engine", race.Results[0].Status);
+    }
+
+    [Fact]
+    public async Task GetSeasonChampionAsync_ParsesChampionFromDriverStandingsPositionOne()
+    {
+        _server
+            .Given(Request.Create().WithPath("/2023/driverStandings/1.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    StandingsTable = new
+                    {
+                        StandingsLists = new[]
+                        {
+                            new
+                            {
+                                DriverStandings = new[]
+                                {
+                                    new
+                                    {
+                                        position = "1",
+                                        points = "575",
+                                        wins = "19",
+                                        Driver = new { driverId = "max_verstappen", givenName = "Max", familyName = "Verstappen" },
+                                        Constructors = new[] { new { constructorId = "red_bull", name = "Red Bull" } },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var champion = await client.GetSeasonChampionAsync(2023, CancellationToken.None);
+
+        Assert.NotNull(champion);
+        Assert.Equal("max_verstappen", champion!.Driver.DriverId);
+    }
+
+    [Fact]
+    public async Task GetSeasonChampionAsync_ReturnsNullWhenNoStandingsForThatSeason()
+    {
+        _server
+            .Given(Request.Create().WithPath("/1930/driverStandings/1.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { StandingsTable = new { StandingsLists = Array.Empty<object>() } },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var champion = await client.GetSeasonChampionAsync(1930, CancellationToken.None);
+
+        Assert.Null(champion);
+    }
+
     public void Dispose() => _server.Stop();
 }
