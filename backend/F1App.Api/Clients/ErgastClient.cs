@@ -33,6 +33,17 @@ public class ErgastClient(HttpClient httpClient) : IErgastClient
             : response.MRData.StandingsTable.StandingsLists[0].ConstructorStandings;
     }
 
+    public async Task<IReadOnlyList<ErgastConstructorStandingDto>> GetConstructorStandingsByRoundAsync(int round, CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastConstructorStandingsResponseDto>(
+            $"current/{round}/constructorStandings.json", cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for round {round} constructor standings.");
+
+        return response.MRData.StandingsTable.StandingsLists.Count == 0
+            ? []
+            : response.MRData.StandingsTable.StandingsLists[0].ConstructorStandings;
+    }
+
     public async Task<IReadOnlyList<ErgastResultDto>> GetCircuitResultsAsync(int season, string circuitId, CancellationToken cancellationToken)
     {
         var response = await httpClient.GetFromJsonAsync<ErgastRaceResultResponseDto>(

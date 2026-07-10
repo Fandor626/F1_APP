@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
@@ -37,25 +37,27 @@ describe('StandingsPage', () => {
   it('renders every driver in a real table by default', async () => {
     renderPage()
 
-    await waitFor(() => expect(screen.getByText('Norris')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument())
 
-    expect(screen.getByRole('table')).toBeInTheDocument()
+    const table = within(screen.getByRole('table'))
     for (const standing of sampleDriverStandings) {
-      expect(screen.getByText(standing.driverName)).toBeInTheDocument()
+      expect(table.getByText(standing.driverName)).toBeInTheDocument()
     }
   })
 
   it('switches to constructors instantly with no reload', async () => {
     renderPage()
 
-    await waitFor(() => expect(screen.getByText('Norris')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument())
+    expect(within(screen.getByRole('table')).getByText('Norris')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Constructors' }))
 
     expect(screen.queryByText('Norris')).not.toBeInTheDocument()
     await waitFor(() => {
+      const table = within(screen.getByRole('table'))
       for (const standing of sampleConstructorStandings) {
-        expect(screen.getByText(standing.constructorName)).toBeInTheDocument()
+        expect(table.getByText(standing.constructorName)).toBeInTheDocument()
       }
     })
   })

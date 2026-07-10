@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ConstructorsStandingsTable } from './ConstructorsStandingsTable'
 import { DriversStandingsTable } from './DriversStandingsTable'
+import { SeasonWrapped } from './SeasonWrapped/SeasonWrapped'
 import { TrajectoryChart } from './TrajectoryChart'
 
 type StandingsTab = 'drivers' | 'constructors'
@@ -44,6 +45,7 @@ export function StandingsPage() {
       </div>
 
       <TrajectoryChart />
+      <SeasonWrapped />
     </div>
   )
 }

@@ -156,6 +156,47 @@ public class ErgastClientContractTests : IDisposable
     }
 
     [Fact]
+    public async Task GetConstructorStandingsByRoundAsync_ParsesTopLevelStandingsList()
+    {
+        _server
+            .Given(Request.Create().WithPath("/current/5/constructorStandings.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    StandingsTable = new
+                    {
+                        StandingsLists = new[]
+                        {
+                            new
+                            {
+                                ConstructorStandings = new[]
+                                {
+                                    new
+                                    {
+                                        position = "2",
+                                        points = "80",
+                                        wins = "1",
+                                        Constructor = new { constructorId = "ferrari", name = "Ferrari" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var standings = await client.GetConstructorStandingsByRoundAsync(5, CancellationToken.None);
+
+        var standing = Assert.Single(standings);
+        Assert.Equal("Ferrari", standing.Constructor.Name);
+        Assert.Equal("2", standing.Position);
+    }
+
+    [Fact]
     public async Task GetCircuitResultsAsync_ParsesWinnerFromFirstRace()
     {
         _server

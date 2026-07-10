@@ -116,4 +116,84 @@ public class StandingsControllerTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Contains("\"cumulativePoints\"", body);
         Assert.Contains("\"raceName\"", body);
     }
+
+    [Fact]
+    public async Task GetSeasonWrapped_ReturnsNullBodyWhenSeasonInProgress()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceTableDto("2026",
+            [
+                new ErgastRaceDto("2026", "1", "Bahrain Grand Prix",
+                    new ErgastCircuitDto("bahrain", "Bahrain International Circuit", new ErgastLocationDto("Sakhir", "Bahrain")),
+                    "2026-03-08", "18:00:00Z", null, null, null, null, null, null),
+            ]));
+        ergastClient
+            .Setup(c => c.GetRaceResultsByRoundAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ErgastRaceResultRaceDto?)null);
+
+        var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddScoped<IErgastClient>(_ => ergastClient.Object)))
+            .CreateClient();
+
+        var response = await client.GetAsync("/api/standings/season-wrapped");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Equal("null", body);
+    }
+
+    [Fact]
+    public async Task GetSeasonWrapped_ReturnsCamelCaseWrapWhenSeasonComplete()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceTableDto("2026",
+            [
+                new ErgastRaceDto("2026", "1", "Bahrain Grand Prix",
+                    new ErgastCircuitDto("bahrain", "Bahrain International Circuit", new ErgastLocationDto("Sakhir", "Bahrain")),
+                    "2026-03-08", "18:00:00Z", null, null, null, null, null, null),
+                new ErgastRaceDto("2026", "2", "Saudi Arabian Grand Prix",
+                    new ErgastCircuitDto("jeddah", "Jeddah Corniche Circuit", new ErgastLocationDto("Jeddah", "Saudi Arabia")),
+                    "2026-03-15", "20:00:00Z", null, null, null, null, null, null),
+            ]));
+        ergastClient
+            .Setup(c => c.GetRaceResultsByRoundAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceResultRaceDto("Bahrain Grand Prix", "1", "2026-03-08",
+            [
+                new ErgastResultDto(new ErgastDriverDto("norris", "Lando", "Norris"), new ErgastConstructorDto("mclaren", "McLaren"), null, "1", "4", "Finished", "25", "3"),
+                new ErgastResultDto(new ErgastDriverDto("piastri", "Oscar", "Piastri"), new ErgastConstructorDto("mclaren", "McLaren"), null, null, "81", "Accident", "0", "5"),
+            ]));
+        ergastClient
+            .Setup(c => c.GetRaceResultsByRoundAsync(2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceResultRaceDto("Saudi Arabian Grand Prix", "2", "2026-03-15",
+            [
+                new ErgastResultDto(new ErgastDriverDto("norris", "Lando", "Norris"), new ErgastConstructorDto("mclaren", "McLaren"), null, "2", "4", "Finished", "18", "1"),
+                new ErgastResultDto(new ErgastDriverDto("piastri", "Oscar", "Piastri"), new ErgastConstructorDto("mclaren", "McLaren"), null, "1", "81", "Finished", "25", "2"),
+            ]));
+        ergastClient
+            .Setup(c => c.GetConstructorStandingsByRoundAsync(2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new ErgastConstructorStandingDto("2", "0", "0", new ErgastConstructorDto("mclaren", "McLaren"))]);
+        ergastClient
+            .Setup(c => c.GetCurrentConstructorStandingsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new ErgastConstructorStandingDto("1", "68", "1", new ErgastConstructorDto("mclaren", "McLaren"))]);
+
+        var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddScoped<IErgastClient>(_ => ergastClient.Object)))
+            .CreateClient();
+
+        var response = await client.GetAsync("/api/standings/season-wrapped");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"mostDramaticRace\"", body);
+        Assert.Contains("\"mostDnfs\"", body);
+        Assert.Contains("\"biggestPointsComeback\"", body);
+        Assert.Contains("\"mostPositionsGainedInARace\"", body);
+        Assert.Contains("\"mostImprovedConstructor\"", body);
+    }
 }

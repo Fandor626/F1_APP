@@ -7,5 +7,6 @@ export const queryKeys = {
     drivers: ['standings', 'drivers', 'current'] as const,
     constructors: ['standings', 'constructors', 'current'] as const,
     trajectory: ['standings', 'trajectory', 'current'] as const,
+    seasonWrapped: ['standings', 'season-wrapped', 'current'] as const,
   },
 }

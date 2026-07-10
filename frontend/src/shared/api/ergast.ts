@@ -62,6 +62,46 @@ const TrajectoriesSchema = z.array(DriverTrajectorySchema)
 export type TrajectoryPoint = z.infer<typeof TrajectoryPointSchema>
 export type DriverTrajectory = z.infer<typeof DriverTrajectorySchema>
 
+const DramaticRaceAwardSchema = z.object({
+  raceName: z.string(),
+  round: z.number(),
+  totalPositionSwing: z.number(),
+})
+
+const DriverStatAwardSchema = z.object({
+  driverId: z.string(),
+  driverName: z.string(),
+  constructorName: z.string(),
+  value: z.number(),
+})
+
+const DriverRaceAwardSchema = z.object({
+  driverId: z.string(),
+  driverName: z.string(),
+  constructorName: z.string(),
+  raceName: z.string(),
+  positionsGained: z.number(),
+})
+
+const ConstructorImprovementAwardSchema = z.object({
+  constructorName: z.string(),
+  earlySeasonPosition: z.number(),
+  finalPosition: z.number(),
+  positionsImproved: z.number(),
+})
+
+const SeasonWrappedSchema = z
+  .object({
+    mostDramaticRace: DramaticRaceAwardSchema,
+    mostDnfs: DriverStatAwardSchema,
+    biggestPointsComeback: DriverStatAwardSchema,
+    mostPositionsGainedInARace: DriverRaceAwardSchema,
+    mostImprovedConstructor: ConstructorImprovementAwardSchema,
+  })
+  .nullable()
+
+export type SeasonWrapped = z.infer<typeof SeasonWrappedSchema>
+
 const SessionSchema = z.object({
   name: z.string(),
   start: z.string(),
@@ -169,6 +209,15 @@ export function useChampionshipTrajectory() {
   return useQuery({
     queryKey: queryKeys.standings.trajectory,
     queryFn: ({ signal }) => fetchJson('/api/standings/trajectory', TrajectoriesSchema, signal),
+    staleTime: STANDINGS_STALE_TIME_MS,
+    retry: false,
+  })
+}
+
+export function useSeasonWrapped() {
+  return useQuery({
+    queryKey: queryKeys.standings.seasonWrapped,
+    queryFn: ({ signal }) => fetchJson('/api/standings/season-wrapped', SeasonWrappedSchema, signal),
     staleTime: STANDINGS_STALE_TIME_MS,
     retry: false,
   })

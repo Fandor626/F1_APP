@@ -1,5 +1,12 @@
 import { http, HttpResponse } from 'msw'
-import type { ConstructorStanding, DriverStanding, DriverTrajectory, RaceWeekend, RaceWeekendDetail } from '../../api/ergast'
+import type {
+  ConstructorStanding,
+  DriverStanding,
+  DriverTrajectory,
+  RaceWeekend,
+  RaceWeekendDetail,
+  SeasonWrapped,
+} from '../../api/ergast'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
 
@@ -43,6 +50,25 @@ export const sampleConstructorStandings: ConstructorStanding[] = [
   { position: 3, constructorName: 'Red Bull Racing', points: 375, wins: 5, nationality: 'Austrian' },
   { position: 4, constructorName: 'Mercedes', points: 308, wins: 1, nationality: 'German' },
 ]
+
+export const sampleSeasonWrapped: SeasonWrapped = {
+  mostDramaticRace: { raceName: 'Brazilian Grand Prix', round: 21, totalPositionSwing: 64 },
+  mostDnfs: { driverId: 'perez', driverName: 'Pérez', constructorName: 'Red Bull Racing', value: 5 },
+  biggestPointsComeback: { driverId: 'russell', driverName: 'Russell', constructorName: 'Mercedes', value: 87 },
+  mostPositionsGainedInARace: {
+    driverId: 'hamilton',
+    driverName: 'Hamilton',
+    constructorName: 'Ferrari',
+    raceName: 'Dutch Grand Prix',
+    positionsGained: 15,
+  },
+  mostImprovedConstructor: {
+    constructorName: 'Mercedes',
+    earlySeasonPosition: 5,
+    finalPosition: 2,
+    positionsImproved: 3,
+  },
+}
 
 export const sampleTrajectory: DriverTrajectory[] = [
   {
@@ -126,6 +152,7 @@ export const ergastHandlers = [
   http.get(`${API_BASE_URL}/api/standings/drivers`, () => HttpResponse.json(sampleDriverStandings)),
   http.get(`${API_BASE_URL}/api/standings/constructors`, () => HttpResponse.json(sampleConstructorStandings)),
   http.get(`${API_BASE_URL}/api/standings/trajectory`, () => HttpResponse.json(sampleTrajectory)),
+  http.get(`${API_BASE_URL}/api/standings/season-wrapped`, () => HttpResponse.json(sampleSeasonWrapped)),
   http.get(`${API_BASE_URL}/api/races/:round/win-probability`, () => HttpResponse.json([])),
   http.get(`${API_BASE_URL}/api/races/:round`, ({ params }) => {
     const detail = sampleRaceDetailsByRound[Number(params.round)]
