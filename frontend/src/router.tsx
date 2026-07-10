@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import App from './App'
 import { CalendarPage, RaceWeekendDetailView } from './features/calendar'
 import { LiveRacePage } from './features/live-race'
+import { CircuitProfilePage } from './features/profiles'
 import { StandingsPage } from './features/standings'
 import { ErrorBoundary } from './shared/components/ErrorBoundary'
 
@@ -15,6 +16,7 @@ export const router = createBrowserRouter([
       { path: 'races/:round', element: <RaceWeekendDetailView /> },
       { path: 'live', element: <LiveRacePage /> },
       { path: 'standings', element: <StandingsPage /> },
+      { path: 'circuits/:circuitId', element: <CircuitProfilePage /> },
     ],
   },
 ])

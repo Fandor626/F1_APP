@@ -10,7 +10,7 @@ namespace F1App.Api.Tests.Services;
 public class SeasonWrappedServiceTests
 {
     private static RaceWeekendSummary Race(int round, string raceName) =>
-        new(2026, round, raceName, "Circuit", "City", "Country", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+        new(2026, round, raceName, "circuit-id", "Circuit", "City", "Country", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
 
     private static ErgastResultDto Result(string driverId, string constructorName, string? grid, string? pos, string status, string points) =>
         new(new ErgastDriverDto(driverId, "Given", driverId), new ErgastConstructorDto("cid", constructorName), null, pos, null, status, points, grid);

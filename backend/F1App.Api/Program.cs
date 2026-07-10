@@ -59,6 +59,7 @@ builder.Services.AddScoped<StandingsService>();
 builder.Services.AddScoped<SeasonWrappedService>();
 builder.Services.AddScoped<WinProbabilityService>();
 builder.Services.AddScoped<PitWindowService>();
+builder.Services.AddScoped<CircuitProfileService>();
 builder.Services.AddHostedService<RaceDataOrchestrator>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

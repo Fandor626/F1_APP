@@ -48,7 +48,12 @@ export function RaceWeekendDetailView() {
             <CountryFlag country={data.country} className="text-[20px] leading-none" />
             <h1 className="text-[26px] font-bold tracking-[-0.01em] text-text-primary">{data.raceName}</h1>
           </div>
-          <p className="mb-7 text-[13px] text-text-secondary">{data.circuitName}</p>
+          <Link
+            to={`/circuits/${data.circuitId}`}
+            className="mb-7 inline-block text-[13px] text-text-secondary hover:text-accent-editorial hover:underline"
+          >
+            {data.circuitName}
+          </Link>
 
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">

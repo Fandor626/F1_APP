@@ -109,4 +109,30 @@ public class ErgastClient(HttpClient httpClient) : IErgastClient
             ? []
             : pitResponse.MRData.RaceTable.Races[0].PitStops;
     }
+
+    public async Task<ErgastCircuitDto?> GetCircuitInfoAsync(string circuitId, CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastCircuitInfoResponseDto>(
+            $"circuits/{circuitId}.json", cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for circuit {circuitId}.");
+
+        return response.MRData.CircuitTable.Circuits.Count == 0
+            ? null
+            : response.MRData.CircuitTable.Circuits[0];
+    }
+
+    public async Task<IReadOnlyList<ErgastRaceResultRaceDto>> GetAllCircuitResultsAsync(string circuitId, CancellationToken cancellationToken)
+    {
+        // No season prefix = every season Ergast has for this circuitId in one
+        // call. No `/1` results-position segment either — unlike the existing
+        // season-scoped GetCircuitResultsAsync, full result rows are needed so
+        // the lap-record scan can see every driver's FastestLap, not just the
+        // winner's. limit=500 comfortably covers even Monza's ~75 F1 races to
+        // date.
+        var response = await httpClient.GetFromJsonAsync<ErgastRaceResultResponseDto>(
+            $"circuits/{circuitId}/results.json?limit=500", cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for {circuitId} all-time results.");
+
+        return response.MRData.RaceTable.Races;
+    }
 }

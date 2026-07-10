@@ -6,6 +6,7 @@ const RaceWeekendSchema = z.object({
   season: z.number(),
   round: z.number(),
   raceName: z.string(),
+  circuitId: z.string(),
   circuitName: z.string(),
   locality: z.string(),
   country: z.string(),
@@ -123,6 +124,7 @@ const RaceWeekendDetailSchema = z.object({
   season: z.number(),
   round: z.number(),
   raceName: z.string(),
+  circuitId: z.string(),
   circuitName: z.string(),
   country: z.string(),
   sessions: z.array(SessionSchema),
@@ -157,6 +159,10 @@ const STANDINGS_STALE_TIME_MS = 1000 * 60 * 60
 
 // Mirrors backend's qualifying results cache TTL (6h).
 const QUALIFYING_STALE_TIME_MS = 1000 * 60 * 60 * 6
+
+// Mirrors backend's historical-results cache TTL (7 days) — circuit profile
+// data only changes once per race weekend held there.
+const HISTORICAL_STALE_TIME_MS = 1000 * 60 * 60 * 24 * 7
 
 // A hung connection (no response, no error) must not leave the page stuck
 // on a loading state forever — see deferred-work.md from Story 1.1.
@@ -238,6 +244,65 @@ export function useWinProbability(round: number) {
     queryFn: ({ signal }) => fetchJson(`/api/races/${round}/win-probability`, WinProbabilitySchema, signal),
     staleTime: QUALIFYING_STALE_TIME_MS,
     enabled: !isNaN(round) && round > 0,
+    retry: false,
+  })
+}
+
+const LapRecordSchema = z.object({
+  driverName: z.string(),
+  constructorName: z.string(),
+  time: z.string(),
+  season: z.number(),
+})
+
+const CircuitWinnerSchema = z.object({
+  season: z.number(),
+  driverName: z.string(),
+  constructorName: z.string(),
+})
+
+const CircuitStatsSchema = z.object({
+  lengthKm: z.number(),
+  corners: z.number(),
+  drsZones: z.number(),
+})
+
+const CircuitProfileSchema = z.object({
+  circuitId: z.string(),
+  circuitName: z.string(),
+  locality: z.string(),
+  country: z.string(),
+  firstF1Season: z.number(),
+  lapRecord: LapRecordSchema.nullable(),
+  pastWinners: z.array(CircuitWinnerSchema),
+  stats: CircuitStatsSchema.nullable(),
+})
+
+export type CircuitProfile = z.infer<typeof CircuitProfileSchema>
+
+async function fetchCircuitProfile(circuitId: string, signal: AbortSignal): Promise<CircuitProfile | null> {
+  if (!API_BASE_URL) {
+    throw new Error('VITE_API_BASE_URL is not set — copy .env.example to .env.local')
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/circuits/${circuitId}`, {
+    signal: AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
+  })
+
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw new Error(`Request to /api/circuits/${circuitId} failed: ${response.status}`)
+  }
+
+  return CircuitProfileSchema.parse(await response.json())
+}
+
+export function useCircuitProfile(circuitId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.circuitProfile(circuitId ?? ''),
+    queryFn: ({ signal }) => fetchCircuitProfile(circuitId!, signal),
+    staleTime: HISTORICAL_STALE_TIME_MS,
+    enabled: !!circuitId,
     retry: false,
   })
 }

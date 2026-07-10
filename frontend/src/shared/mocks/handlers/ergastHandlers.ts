@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type {
+  CircuitProfile,
   ConstructorStanding,
   DriverStanding,
   DriverTrajectory,
@@ -15,6 +16,7 @@ export const sampleRaceSchedule: RaceWeekend[] = [
     season: 2026,
     round: 1,
     raceName: 'Bahrain Grand Prix',
+    circuitId: 'bahrain',
     circuitName: 'Bahrain International Circuit',
     locality: 'Sakhir',
     country: 'Bahrain',
@@ -25,6 +27,7 @@ export const sampleRaceSchedule: RaceWeekend[] = [
     season: 2026,
     round: 2,
     raceName: 'Saudi Arabian Grand Prix',
+    circuitId: 'jeddah',
     circuitName: 'Jeddah Corniche Circuit',
     locality: 'Jeddah',
     country: 'Saudi Arabia',
@@ -118,6 +121,7 @@ export const sampleRaceDetailsByRound: Record<number, RaceWeekendDetail> = {
     season: 2026,
     round: 1,
     raceName: 'Bahrain Grand Prix',
+    circuitId: 'bahrain',
     circuitName: 'Bahrain International Circuit',
     country: 'Bahrain',
     sessions: [
@@ -134,6 +138,7 @@ export const sampleRaceDetailsByRound: Record<number, RaceWeekendDetail> = {
     season: 2026,
     round: 2,
     raceName: 'Saudi Arabian Grand Prix',
+    circuitId: 'jeddah',
     circuitName: 'Jeddah Corniche Circuit',
     country: 'Saudi Arabia',
     sessions: [
@@ -147,6 +152,20 @@ export const sampleRaceDetailsByRound: Record<number, RaceWeekendDetail> = {
   },
 }
 
+export const sampleCircuitProfile: CircuitProfile = {
+  circuitId: 'monza',
+  circuitName: 'Autodromo Nazionale di Monza',
+  locality: 'Monza',
+  country: 'Italy',
+  firstF1Season: 1950,
+  lapRecord: { driverName: 'Lewis Hamilton', constructorName: 'Mercedes', time: '1:21.046', season: 2020 },
+  pastWinners: [
+    { season: 2025, driverName: 'Lando Norris', constructorName: 'McLaren' },
+    { season: 2024, driverName: 'Charles Leclerc', constructorName: 'Ferrari' },
+  ],
+  stats: { lengthKm: 5.793, corners: 11, drsZones: 2 },
+}
+
 export const ergastHandlers = [
   http.get(`${API_BASE_URL}/api/races`, () => HttpResponse.json(sampleRaceSchedule)),
   http.get(`${API_BASE_URL}/api/standings/drivers`, () => HttpResponse.json(sampleDriverStandings)),
@@ -157,5 +176,10 @@ export const ergastHandlers = [
   http.get(`${API_BASE_URL}/api/races/:round`, ({ params }) => {
     const detail = sampleRaceDetailsByRound[Number(params.round)]
     return detail ? HttpResponse.json(detail) : new HttpResponse(null, { status: 404 })
+  }),
+  http.get(`${API_BASE_URL}/api/circuits/:circuitId`, ({ params }) => {
+    return params.circuitId === sampleCircuitProfile.circuitId
+      ? HttpResponse.json(sampleCircuitProfile)
+      : new HttpResponse(null, { status: 404 })
   }),
 ]

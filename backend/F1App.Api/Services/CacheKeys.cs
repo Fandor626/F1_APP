@@ -15,4 +15,6 @@ public static class CacheKeys
     public const string LastRaceResult = "races:last-result";
 
     public static string PitWindowBaseline(string circuitId) => $"pitWindow:{circuitId}";
+
+    public static string CircuitProfile(string circuitId) => $"circuit:profile:{circuitId}";
 }

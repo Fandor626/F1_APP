@@ -21,4 +21,8 @@ public interface IErgastClient
     Task<ErgastRaceResultRaceDto?> GetRaceResultsByRoundAsync(int round, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<ErgastPitStopDto>> GetCircuitPitStopsAsync(int season, string circuitId, CancellationToken cancellationToken);
+
+    Task<ErgastCircuitDto?> GetCircuitInfoAsync(string circuitId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ErgastRaceResultRaceDto>> GetAllCircuitResultsAsync(string circuitId, CancellationToken cancellationToken);
 }

@@ -9,6 +9,7 @@ const race: RaceWeekend = {
   season: 2026,
   round: 14,
   raceName: 'Italian Grand Prix',
+  circuitId: 'monza',
   circuitName: 'Autodromo Nazionale di Monza',
   locality: 'Monza',
   country: 'Italy',

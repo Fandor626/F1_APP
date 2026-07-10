@@ -459,5 +459,120 @@ public class ErgastClientContractTests : IDisposable
         Assert.Empty(pitStops);
     }
 
+    [Fact]
+    public async Task GetCircuitInfoAsync_ParsesCircuitNameAndLocation()
+    {
+        _server
+            .Given(Request.Create().WithPath("/circuits/monza.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    CircuitTable = new
+                    {
+                        Circuits = new[]
+                        {
+                            new
+                            {
+                                circuitId = "monza",
+                                circuitName = "Autodromo Nazionale di Monza",
+                                Location = new { locality = "Monza", country = "Italy" },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var circuit = await client.GetCircuitInfoAsync("monza", CancellationToken.None);
+
+        Assert.NotNull(circuit);
+        Assert.Equal("Autodromo Nazionale di Monza", circuit!.CircuitName);
+        Assert.Equal("Monza", circuit.Location.Locality);
+        Assert.Equal("Italy", circuit.Location.Country);
+    }
+
+    [Fact]
+    public async Task GetCircuitInfoAsync_ReturnsNullWhenCircuitIdUnknown()
+    {
+        _server
+            .Given(Request.Create().WithPath("/circuits/not_a_circuit.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { CircuitTable = new { Circuits = Array.Empty<object>() } },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var circuit = await client.GetCircuitInfoAsync("not_a_circuit", CancellationToken.None);
+
+        Assert.Null(circuit);
+    }
+
+    [Fact]
+    public async Task GetAllCircuitResultsAsync_ParsesMultipleSeasonsOfRaces()
+    {
+        _server
+            .Given(Request.Create().WithPath("/circuits/monza/results.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    RaceTable = new
+                    {
+                        Races = new[]
+                        {
+                            new
+                            {
+                                season = "2023",
+                                raceName = "Italian Grand Prix",
+                                round = "15",
+                                Results = new[]
+                                {
+                                    new
+                                    {
+                                        position = "1",
+                                        Driver = new { driverId = "verstappen", givenName = "Max", familyName = "Verstappen" },
+                                        Constructor = new { constructorId = "red_bull", name = "Red Bull Racing" },
+                                        FastestLap = new { rank = "1", Time = new { time = "1:47.930" } },
+                                    },
+                                },
+                            },
+                            new
+                            {
+                                season = "2024",
+                                raceName = "Italian Grand Prix",
+                                round = "16",
+                                Results = new[]
+                                {
+                                    new
+                                    {
+                                        position = "1",
+                                        Driver = new { driverId = "norris", givenName = "Lando", familyName = "Norris" },
+                                        Constructor = new { constructorId = "mclaren", name = "McLaren" },
+                                        FastestLap = new { rank = "1", Time = new { time = "1:26.720" } },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var races = await client.GetAllCircuitResultsAsync("monza", CancellationToken.None);
+
+        Assert.Equal(2, races.Count);
+        Assert.Equal("2023", races[0].Season);
+        Assert.Equal("2024", races[1].Season);
+        Assert.Equal("1", races[1].Results[0].FastestLap?.Rank);
+        Assert.Equal("1:26.720", races[1].Results[0].FastestLap?.Time?.Time);
+    }
+
     public void Dispose() => _server.Stop();
 }

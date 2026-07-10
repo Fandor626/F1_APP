@@ -67,4 +67,15 @@ describe('RaceWeekendDetailView', () => {
 
     expect(screen.getByRole('link', { name: '← Calendar' })).toHaveAttribute('href', '/')
   })
+
+  it('links the circuit name to its profile page', async () => {
+    renderDetail(1)
+
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: 'Bahrain International Circuit' })).toHaveAttribute(
+        'href',
+        '/circuits/bahrain',
+      ),
+    )
+  })
 })

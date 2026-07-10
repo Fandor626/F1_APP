@@ -4,6 +4,7 @@ public record RaceWeekendDetail(
     int Season,
     int Round,
     string RaceName,
+    string CircuitId,
     string CircuitName,
     string Country,
     IReadOnlyList<Session> Sessions,
