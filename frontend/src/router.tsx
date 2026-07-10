@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import App from './App'
 import { CalendarPage, RaceWeekendDetailView } from './features/calendar'
+import { NewsFeedPage } from './features/fan-engagement'
 import { LiveRacePage } from './features/live-race'
 import { CircuitProfilePage, DriverProfilePage, HeadToHeadPage } from './features/profiles'
 import { StandingsPage } from './features/standings'
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
       { path: 'circuits/:circuitId', element: <CircuitProfilePage /> },
       { path: 'drivers/:driverId', element: <DriverProfilePage /> },
       { path: 'head-to-head', element: <HeadToHeadPage /> },
+      { path: 'news', element: <NewsFeedPage /> },
     ],
   },
 ])

@@ -8,6 +8,7 @@ export const queryKeys = {
   allDrivers: ['drivers', 'all'] as const,
   headToHead: (driverA: string, driverB: string, season: number | null, circuitId: string | null) =>
     ['drivers', 'compare', driverA, driverB, season, circuitId] as const,
+  news: ['news', 'feed'] as const,
   standings: {
     drivers: ['standings', 'drivers', 'current'] as const,
     constructors: ['standings', 'constructors', 'current'] as const,

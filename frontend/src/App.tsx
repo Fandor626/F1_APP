@@ -22,6 +22,12 @@ function App() {
         >
           Standings
         </Link>
+        <Link
+          to="/news"
+          className="text-[#eef0f3] text-sm font-semibold hover:text-[#d8b65c]"
+        >
+          News Feed
+        </Link>
       </nav>
       <Outlet />
     </>
