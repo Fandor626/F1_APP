@@ -28,6 +28,12 @@ function App() {
         >
           News Feed
         </Link>
+        <Link
+          to="/fan-card"
+          className="text-[#eef0f3] text-sm font-semibold hover:text-[#d8b65c]"
+        >
+          Fan Card
+        </Link>
       </nav>
       <Outlet />
     </>
