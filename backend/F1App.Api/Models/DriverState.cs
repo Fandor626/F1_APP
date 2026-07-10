@@ -15,4 +15,5 @@ public record DriverState
     public double? X { get; init; }
     public double? Y { get; init; }
     public string? MiniSectorStatus { get; init; } // "purple" | "green" | "yellow" | "white"
+    public bool PitWindowActive { get; init; }
 }

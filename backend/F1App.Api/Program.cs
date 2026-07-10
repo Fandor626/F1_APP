@@ -57,6 +57,7 @@ builder.Services.AddHttpClient<IOpenF1Client, OpenF1Client>(client =>
 builder.Services.AddScoped<RaceScheduleService>();
 builder.Services.AddScoped<StandingsService>();
 builder.Services.AddScoped<WinProbabilityService>();
+builder.Services.AddScoped<PitWindowService>();
 builder.Services.AddHostedService<RaceDataOrchestrator>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

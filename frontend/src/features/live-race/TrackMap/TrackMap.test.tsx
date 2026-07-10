@@ -65,6 +65,7 @@ describe('TrackMap', () => {
           gapIsStale: false, tyreCompound: null, stintLaps: null,
           championshipDelta: null, x: -1500.0, y: 823.0,
           miniSectorStatus: null,
+          pitWindowActive: false,
         },
       },
     })
@@ -89,6 +90,7 @@ describe('TrackMap', () => {
           gapIsStale: false, tyreCompound: null, stintLaps: null,
           championshipDelta: null, x: -1500.0, y: 823.0,
           miniSectorStatus: 'purple',
+          pitWindowActive: false,
         },
       },
     })

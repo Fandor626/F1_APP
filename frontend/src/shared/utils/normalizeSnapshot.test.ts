@@ -17,6 +17,7 @@ function makeDriver(driverNumber: number, position: number): DriverState {
     x: null,
     y: null,
     miniSectorStatus: null,
+    pitWindowActive: false,
   }
 }
 

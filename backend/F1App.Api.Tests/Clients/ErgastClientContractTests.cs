@@ -291,5 +291,65 @@ public class ErgastClientContractTests : IDisposable
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task GetCircuitPitStopsAsync_ResolvesRoundThenReturnsPitStops()
+    {
+        _server
+            .Given(Request.Create().WithPath("/2025/circuits/monza/results/1.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { RaceTable = new { Races = new[] { new { round = "16", Results = Array.Empty<object>() } } } },
+            }));
+        _server
+            .Given(Request.Create().WithPath("/2025/16/pitstops.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    RaceTable = new
+                    {
+                        Races = new[]
+                        {
+                            new
+                            {
+                                PitStops = new[]
+                                {
+                                    new { driverId = "norris", lap = "18", stop = "1" },
+                                    new { driverId = "piastri", lap = "20", stop = "1" },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var pitStops = await client.GetCircuitPitStopsAsync(2025, "monza", CancellationToken.None);
+
+        Assert.Equal(2, pitStops.Count);
+        Assert.Equal("norris", pitStops[0].DriverId);
+        Assert.Equal("18", pitStops[0].Lap);
+    }
+
+    [Fact]
+    public async Task GetCircuitPitStopsAsync_ReturnsEmptyWhenNoRaceAtCircuitThatSeason()
+    {
+        _server
+            .Given(Request.Create().WithPath("/2025/circuits/las_vegas/results/1.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { RaceTable = new { Races = Array.Empty<object>() } },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var pitStops = await client.GetCircuitPitStopsAsync(2025, "las_vegas", CancellationToken.None);
+
+        Assert.Empty(pitStops);
+    }
+
     public void Dispose() => _server.Stop();
 }

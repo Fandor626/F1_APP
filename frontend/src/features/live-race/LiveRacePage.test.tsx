@@ -81,7 +81,7 @@ describe('LiveRacePage', () => {
             driverNumber: 4, driverCode: 'NOR', teamName: 'McLaren',
             teamColour: '555555', position: 1, gapToCarAhead: null,
             gapIsStale: false, tyreCompound: null, stintLaps: null, championshipDelta: null,
-            x: null, y: null, miniSectorStatus: null,
+            x: null, y: null, miniSectorStatus: null, pitWindowActive: false,
           },
         ],
       } as never,

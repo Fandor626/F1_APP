@@ -36,6 +36,7 @@ function makeDriver(driverNumber: number, teamColour = 'FF0000'): DriverState {
     x: null,
     y: null,
     miniSectorStatus: null,
+    pitWindowActive: false,
   }
 }
 

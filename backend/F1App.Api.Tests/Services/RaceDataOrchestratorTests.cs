@@ -638,4 +638,59 @@ public class RaceDataOrchestratorTests
         Assert.Single(snapshot.Drivers);
         Assert.Equal("purple", snapshot.Drivers[0].MiniSectorStatus);
     }
+
+    [Fact]
+    public void BuildSnapshot_StintLapsWithinWindow_SetsPitWindowActiveTrue()
+    {
+        var sut = CreateOrchestrator();
+        sut._pitWindowBaselineLaps = 20.0; // MEDIUM window ≈ 17.0–23.0
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._latestStints[33] = MakeStint(33, 1, 1, "MEDIUM", tyreAgeAtStart: 0);
+        sut._driverCurrentLap[33] = 19; // stintLaps = 0 + (19 - 1 + 1) = 19, within [17.0, 23.0]
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.True(snapshot.Drivers[0].PitWindowActive);
+    }
+
+    [Fact]
+    public void BuildSnapshot_StintLapsOutsideWindow_SetsPitWindowActiveFalse()
+    {
+        var sut = CreateOrchestrator();
+        sut._pitWindowBaselineLaps = 20.0;
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        sut._latestStints[33] = MakeStint(33, 1, 1, "MEDIUM", tyreAgeAtStart: 0);
+        sut._driverCurrentLap[33] = 5; // stintLaps = 5, well below the window
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.False(snapshot.Drivers[0].PitWindowActive);
+    }
+
+    [Fact]
+    public void BuildSnapshot_NoStintData_PitWindowActiveFalse()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        // no _latestStints entry — tyreCompound stays null
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.False(snapshot.Drivers[0].PitWindowActive);
+    }
+
+    [Fact]
+    public void BuildSnapshot_JustPitted_NewStintResetsWindowToFalse()
+    {
+        var sut = CreateOrchestrator();
+        sut._pitWindowBaselineLaps = 20.0;
+        sut._latestPositions[33] = MakePosition(33, 1, DateTimeOffset.UtcNow);
+        // Driver was on stint 1 at lap 19 (in window), then pits: stint 2 starts at lap 20 fresh
+        sut._latestStints[33] = MakeStint(33, 2, 20, "HARD", tyreAgeAtStart: 0);
+        sut._driverCurrentLap[33] = 20; // stintLaps = 0 + (20 - 20 + 1) = 1
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.False(snapshot.Drivers[0].PitWindowActive);
+    }
 }

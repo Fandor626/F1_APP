@@ -1,5 +1,6 @@
 import { useLiveRaceStore } from '../store/liveRaceStore'
 import { getTyreColour } from '../../../shared/utils/tyreUtils'
+import { PitWindowIndicator } from './PitWindowIndicator'
 
 interface DriverRowProps {
   driverId: string
@@ -69,6 +70,7 @@ export function DriverRow({ driverId }: DriverRowProps) {
           )}
         </span>
       ) : null}
+      {driver.pitWindowActive && <PitWindowIndicator />}
       {driver.championshipDelta != null && (
         <span
           className="text-[10px] text-[#6b7280] tabular-nums shrink-0"

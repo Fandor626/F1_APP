@@ -11,4 +11,6 @@ public static class CacheKeys
     public static string WinProbability(int round) => $"winProbability:{round}";
 
     public const string LastRaceResult = "races:last-result";
+
+    public static string PitWindowBaseline(string circuitId) => $"pitWindow:{circuitId}";
 }

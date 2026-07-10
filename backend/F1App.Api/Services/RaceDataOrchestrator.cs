@@ -52,6 +52,11 @@ public class RaceDataOrchestrator(
     internal readonly ConcurrentDictionary<int, double[]> _personalBestSectors = new();
     internal readonly ConcurrentDictionary<int, string> _latestSectorStatus = new();
 
+    // Historical median stint length (laps) for the active circuit, used as the
+    // pit-window baseline. Loaded once per session in InitialiseDriverInfoAsync;
+    // defaults to PitWindowService.DefaultBaselineLaps until then / on failure.
+    internal double _pitWindowBaselineLaps = PitWindowService.DefaultBaselineLaps;
+
     private DateTimeOffset _lastPositionPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastIntervalPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastLapPoll = DateTimeOffset.MinValue;
@@ -167,6 +172,23 @@ public class RaceDataOrchestrator(
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             logger.LogWarning(ex, "RaceDataOrchestrator: failed to load driver standings; championship delta unavailable");
+        }
+
+        _pitWindowBaselineLaps = PitWindowService.DefaultBaselineLaps;
+        if (_activeCircuitId is not null)
+        {
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var pitWindowSvc = scope.ServiceProvider.GetRequiredService<PitWindowService>();
+                var priorSeason = timeProvider.GetUtcNow().Year - 1;
+                _pitWindowBaselineLaps = await pitWindowSvc.GetBaselineMedianStintLapsAsync(_activeCircuitId, priorSeason, ct);
+                logger.LogInformation("RaceDataOrchestrator: pit window baseline for {CircuitId} = {Baseline} laps", _activeCircuitId, _pitWindowBaselineLaps);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                logger.LogWarning(ex, "RaceDataOrchestrator: failed to load pit window baseline; using default");
+            }
         }
     }
 
@@ -484,6 +506,13 @@ public class RaceDataOrchestrator(
 
                 _latestSectorStatus.TryGetValue(driverNum, out var sectorStatus);
 
+                var pitWindowActive = false;
+                if (stintLaps.HasValue && tyreCompound is not null)
+                {
+                    var (min, max) = PitWindowService.ComputeWindow(_pitWindowBaselineLaps, tyreCompound);
+                    pitWindowActive = stintLaps.Value >= min && stintLaps.Value <= max;
+                }
+
                 drivers.Add(new DriverState
                 {
                     DriverNumber = driverNum,
@@ -498,6 +527,7 @@ public class RaceDataOrchestrator(
                     X = x,
                     Y = y,
                     MiniSectorStatus = sectorStatus,
+                    PitWindowActive = pitWindowActive,
                 });
             }
 

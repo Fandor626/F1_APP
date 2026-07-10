@@ -1,5 +1,5 @@
 # generated: 2026-06-16
-# last_updated: 2026-06-23
+# last_updated: 2026-07-10
 # project: F1_poc
 
 # project_key: NOKEY
@@ -36,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-16
-last_updated: 2026-06-23
+last_updated: 2026-07-10
 
 # Note: Story 1.5 was created via the formal create-story workflow (unlike
 # 1.2-1.4, which were implemented directly) — it has a full story-context
@@ -73,7 +73,7 @@ development_status:
   epic-3: in-progress
   3-1-animated-live-track-map: done
   3-2-mini-sector-colour-coding: done
-  3-3-pit-window-estimator: backlog
+  3-3-pit-window-estimator: done
   3-4-fastest-sector-board: backlog
   3-5-race-event-timeline: backlog
   epic-3-retrospective: optional

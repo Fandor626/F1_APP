@@ -23,6 +23,7 @@ function makeDriver(
     x: null,
     y: null,
     miniSectorStatus: null,
+    pitWindowActive: false,
     ...overrides,
   }
 }
@@ -187,5 +188,25 @@ describe('GapList', () => {
   it('renders "pts if race ended now" label in header', () => {
     render(<GapList />)
     expect(screen.getByText('pts if race ended now')).toBeInTheDocument()
+  })
+
+  it('shows pit window indicator when active', () => {
+    useLiveRaceStore.setState({
+      drivers: {
+        '33': makeDriver(33, 1, { pitWindowActive: true }),
+      },
+    })
+    render(<GapList />)
+    expect(screen.getByTestId('pit-window-indicator')).toBeInTheDocument()
+  })
+
+  it('hides pit window indicator when inactive', () => {
+    useLiveRaceStore.setState({
+      drivers: {
+        '33': makeDriver(33, 1, { pitWindowActive: false }),
+      },
+    })
+    render(<GapList />)
+    expect(screen.queryByTestId('pit-window-indicator')).not.toBeInTheDocument()
   })
 })

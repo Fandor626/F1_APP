@@ -18,6 +18,7 @@ export interface DriverState {
   x: number | null
   y: number | null
   miniSectorStatus: 'purple' | 'green' | 'yellow' | 'white' | null
+  pitWindowActive: boolean
 }
 
 export interface RaceStateSnapshot {

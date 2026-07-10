@@ -13,6 +13,7 @@ public record ErgastRaceResultRaceTableDto(
 
 public record ErgastRaceResultRaceDto(
     [property: JsonPropertyName("raceName")] string RaceName = "",
+    [property: JsonPropertyName("round")] string Round = "",
     [property: JsonPropertyName("date")] string Date = "",
     [property: JsonPropertyName("Results")] IReadOnlyList<ErgastResultDto> Results = default!);
 

@@ -15,4 +15,6 @@ public interface IErgastClient
     Task<IReadOnlyList<ErgastQualifyingResultDto>> GetQualifyingResultsAsync(int round, CancellationToken cancellationToken);
 
     Task<ErgastRaceResultRaceDto?> GetLastRaceResultsAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ErgastPitStopDto>> GetCircuitPitStopsAsync(int season, string circuitId, CancellationToken cancellationToken);
 }
