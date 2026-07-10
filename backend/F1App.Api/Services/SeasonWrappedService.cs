@@ -85,7 +85,7 @@ public class SeasonWrappedService(IErgastClient ergastClient, IMemoryCache cache
                 var isDnf = r.Status is not null && r.Status != "Finished" && !r.Status.StartsWith('+');
                 if (!isDnf) continue;
 
-                var existing = dnfCounts.GetValueOrDefault(r.Driver.DriverId, (r.Driver.FamilyName, r.Constructor.Name, 0));
+                (string Name, string Constructor, int Count) existing = dnfCounts.GetValueOrDefault(r.Driver.DriverId, (r.Driver.FamilyName, r.Constructor.Name, 0));
                 dnfCounts[r.Driver.DriverId] = (existing.Name, existing.Constructor, existing.Count + 1);
             }
         }
