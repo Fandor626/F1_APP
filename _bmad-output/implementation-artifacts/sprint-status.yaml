@@ -70,12 +70,12 @@ development_status:
   2-5-fallback-to-last-race: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress
+  epic-3: done
   3-1-animated-live-track-map: done
   3-2-mini-sector-colour-coding: done
   3-3-pit-window-estimator: done
   3-4-fastest-sector-board: done
-  3-5-race-event-timeline: backlog
+  3-5-race-event-timeline: done
   epic-3-retrospective: optional
 
   epic-4: backlog

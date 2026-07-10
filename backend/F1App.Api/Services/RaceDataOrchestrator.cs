@@ -61,6 +61,13 @@ public class RaceDataOrchestrator(
     // defaults to PitWindowService.DefaultBaselineLaps until then / on failure.
     internal double _pitWindowBaselineLaps = PitWindowService.DefaultBaselineLaps;
 
+    // Race event timeline
+    internal readonly ConcurrentQueue<RaceTimelineEvent> _timelineEvents = new();
+    private DateTimeOffset _lastRaceControlPoll = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastPitEventPoll = DateTimeOffset.MinValue;
+    // Session-fastest lap tracking (single-writer: PollLapsAsync only)
+    private double _sessionFastestLapTime = double.MaxValue;
+
     private DateTimeOffset _lastPositionPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastIntervalPoll = DateTimeOffset.MinValue;
     private DateTimeOffset _lastLapPoll = DateTimeOffset.MinValue;
@@ -88,12 +95,14 @@ public class RaceDataOrchestrator(
             sessionCts.CancelAfter(TimeSpan.FromHours(24));
 
             await Task.WhenAll(
-                RunLoopAsync("PositionPoller",  PollPositionAsync,         sessionCts.Token),
-                RunLoopAsync("IntervalPoller",  PollIntervalAsync,         sessionCts.Token),
-                RunLoopAsync("StintsPoller",    PollStintsAsync,           sessionCts.Token),
-                RunLoopAsync("LapsPoller",      PollLapsAsync,             sessionCts.Token),
-                RunLoopAsync("LocationPoller",  PollLocationAsync,         sessionCts.Token),
-                RunLoopAsync("PublishLoop",     PublishSnapshotLoopAsync,  sessionCts.Token)
+                RunLoopAsync("PositionPoller",     PollPositionAsync,         sessionCts.Token),
+                RunLoopAsync("IntervalPoller",     PollIntervalAsync,         sessionCts.Token),
+                RunLoopAsync("StintsPoller",       PollStintsAsync,           sessionCts.Token),
+                RunLoopAsync("LapsPoller",         PollLapsAsync,             sessionCts.Token),
+                RunLoopAsync("LocationPoller",     PollLocationAsync,         sessionCts.Token),
+                RunLoopAsync("RaceControlPoller",  PollRaceControlAsync,      sessionCts.Token),
+                RunLoopAsync("PitEventPoller",     PollPitEventsAsync,        sessionCts.Token),
+                RunLoopAsync("PublishLoop",        PublishSnapshotLoopAsync,  sessionCts.Token)
             );
         }
     }
@@ -211,6 +220,83 @@ public class RaceDataOrchestrator(
                     loc.DriverNumber,
                     loc,
                     (_, existing) => loc.Date > existing.Date ? loc : existing);
+            }
+        }
+    }
+
+    private async Task PollRaceControlAsync(CancellationToken ct)
+    {
+        var timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            var messages = await openF1Client.GetLatestRaceControlAsync(_lastRaceControlPoll, ct);
+            if (messages.Count > 0)
+                _lastRaceControlPoll = timeProvider.GetUtcNow();
+
+            foreach (var msg in messages)
+            {
+                var evt = ParseRaceControlEvent(msg);
+                if (evt is not null)
+                    _timelineEvents.Enqueue(evt);
+            }
+        }
+    }
+
+    // Verified live against https://api.openf1.org/v1/race_control?session_key=9488
+    // (Australia 2024): SafetyCar-category messages read "...DEPLOYED" / "...ENDING"
+    // (only DEPLOYED becomes a marker, so each SC/VSC period yields one marker, not
+    // two); CarEvent-category messages read like "CAR 44 (HAM) STOPPED AT TURN 10"
+    // for retirements/mechanical stops, with driver_number null on the DTO itself —
+    // the car number only appears in the free-text message.
+    internal RaceTimelineEvent? ParseRaceControlEvent(OpenF1RaceControlDto msg)
+    {
+        var lapNumber = msg.LapNumber ?? 0;
+        var message = msg.Message ?? "";
+        var upper = message.ToUpperInvariant();
+
+        if (msg.Category == "SafetyCar" && upper.Contains("DEPLOYED"))
+        {
+            var isVirtual = upper.Contains("VIRTUAL");
+            return new RaceTimelineEvent(lapNumber, isVirtual ? "VirtualSafetyCar" : "SafetyCar", null, message);
+        }
+
+        if (string.Equals(msg.Flag, "RED", StringComparison.OrdinalIgnoreCase))
+        {
+            return new RaceTimelineEvent(lapNumber, "RedFlag", null, message);
+        }
+
+        if (msg.Category == "CarEvent" && upper.Contains("STOPPED"))
+        {
+            var driverNum = ExtractDriverNumber(message);
+            string? driverCode = driverNum is not null && _driverInfo.TryGetValue(driverNum.Value, out var info)
+                ? info.NameAcronym
+                : driverNum?.ToString();
+            return new RaceTimelineEvent(lapNumber, "Dnf", driverCode, message);
+        }
+
+        return null;
+    }
+
+    private static int? ExtractDriverNumber(string message)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(message, @"CAR (\d+)");
+        return match.Success ? int.Parse(match.Groups[1].Value) : null;
+    }
+
+    private async Task PollPitEventsAsync(CancellationToken ct)
+    {
+        var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            var pits = await openF1Client.GetLatestPitStopsAsync(_lastPitEventPoll, ct);
+            if (pits.Count > 0)
+                _lastPitEventPoll = timeProvider.GetUtcNow();
+
+            foreach (var pit in pits)
+            {
+                _driverInfo.TryGetValue(pit.DriverNumber, out var info);
+                var driverCode = info?.NameAcronym ?? pit.DriverNumber.ToString();
+                _timelineEvents.Enqueue(new RaceTimelineEvent(pit.LapNumber, "PitStop", driverCode, null));
             }
         }
     }
@@ -404,8 +490,20 @@ public class RaceDataOrchestrator(
                 }
 
                 ComputeSectorStatus(lap);
+                TryEnqueueFastestLap(lap);
             }
         }
+    }
+
+    internal void TryEnqueueFastestLap(OpenF1LapDto lap)
+    {
+        if (!lap.LapDuration.HasValue || lap.LapDuration.Value >= _sessionFastestLapTime)
+            return;
+
+        _sessionFastestLapTime = lap.LapDuration.Value;
+        _driverInfo.TryGetValue(lap.DriverNumber, out var info);
+        var driverCode = info?.NameAcronym ?? lap.DriverNumber.ToString();
+        _timelineEvents.Enqueue(new RaceTimelineEvent(lap.LapNumber, "FastestLap", driverCode, null));
     }
 
     internal void ComputeSectorStatus(OpenF1LapDto lap)
@@ -559,6 +657,7 @@ public class RaceDataOrchestrator(
             FallbackRaceName = _fallbackRaceName,
             CircuitId = _activeCircuitId,
             FastestSectors = BuildFastestSectorBoard(),
+            Timeline = [.. _timelineEvents.OrderBy(e => e.LapNumber)],
         };
     }
 

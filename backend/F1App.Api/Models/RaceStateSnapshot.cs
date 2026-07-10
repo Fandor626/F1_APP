@@ -11,4 +11,5 @@ public record RaceStateSnapshot
     public string? FallbackRaceName { get; init; }
     public string? CircuitId { get; init; }
     public FastestSectorBoard? FastestSectors { get; init; }
+    public IReadOnlyList<RaceTimelineEvent> Timeline { get; init; } = [];
 }

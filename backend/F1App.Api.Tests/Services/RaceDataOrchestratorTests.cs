@@ -785,4 +785,131 @@ public class RaceDataOrchestratorTests
 
         Assert.Null(snapshot.FastestSectors);
     }
+
+    private static OpenF1RaceControlDto MakeRaceControl(int? lapNumber, string? category, string? flag, string message) =>
+        new(DateTimeOffset.UtcNow, lapNumber, category, flag, message);
+
+    [Fact]
+    public void ParseRaceControlEvent_VirtualSafetyCarDeployed_ReturnsVirtualSafetyCarEvent()
+    {
+        var sut = CreateOrchestrator();
+        var evt = sut.ParseRaceControlEvent(MakeRaceControl(17, "SafetyCar", null, "VIRTUAL SAFETY CAR DEPLOYED"));
+
+        Assert.NotNull(evt);
+        Assert.Equal("VirtualSafetyCar", evt!.EventType);
+        Assert.Equal(17, evt.LapNumber);
+    }
+
+    [Fact]
+    public void ParseRaceControlEvent_SafetyCarDeployed_ReturnsSafetyCarEvent()
+    {
+        var sut = CreateOrchestrator();
+        var evt = sut.ParseRaceControlEvent(MakeRaceControl(30, "SafetyCar", null, "SAFETY CAR DEPLOYED"));
+
+        Assert.NotNull(evt);
+        Assert.Equal("SafetyCar", evt!.EventType);
+    }
+
+    [Fact]
+    public void ParseRaceControlEvent_SafetyCarEnding_ReturnsNull()
+    {
+        var sut = CreateOrchestrator();
+        var evt = sut.ParseRaceControlEvent(MakeRaceControl(18, "SafetyCar", null, "VIRTUAL SAFETY CAR ENDING"));
+
+        Assert.Null(evt);
+    }
+
+    [Fact]
+    public void ParseRaceControlEvent_RedFlag_ReturnsRedFlagEvent()
+    {
+        var sut = CreateOrchestrator();
+        var evt = sut.ParseRaceControlEvent(MakeRaceControl(10, "Flag", "RED", "RED FLAG"));
+
+        Assert.NotNull(evt);
+        Assert.Equal("RedFlag", evt!.EventType);
+    }
+
+    [Fact]
+    public void ParseRaceControlEvent_CarStopped_ExtractsDriverNumberAndReturnsDnfEvent()
+    {
+        var sut = CreateOrchestrator();
+        sut._driverInfo = new Dictionary<int, OpenF1DriverInfoDto>
+        {
+            [44] = new(44, "HAM", "Mercedes", "00D2BE"),
+        };
+        var evt = sut.ParseRaceControlEvent(MakeRaceControl(17, "CarEvent", null, "CAR 44 (HAM) STOPPED AT TURN 10"));
+
+        Assert.NotNull(evt);
+        Assert.Equal("Dnf", evt!.EventType);
+        Assert.Equal("HAM", evt.DriverCode);
+    }
+
+    [Fact]
+    public void ParseRaceControlEvent_UnrelatedMessage_ReturnsNull()
+    {
+        var sut = CreateOrchestrator();
+        var evt = sut.ParseRaceControlEvent(MakeRaceControl(1, "Drs", null, "DRS DISABLED"));
+
+        Assert.Null(evt);
+    }
+
+    [Fact]
+    public void BuildSnapshot_NoEvents_TimelineIsEmpty()
+    {
+        var sut = CreateOrchestrator();
+        sut._latestPositions[1] = MakePosition(1, 1, DateTimeOffset.UtcNow);
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Empty(snapshot.Timeline);
+    }
+
+    [Fact]
+    public void BuildSnapshot_TimelineSortedByLapNumber()
+    {
+        var sut = CreateOrchestrator();
+        sut._timelineEvents.Enqueue(new RaceTimelineEvent(20, "PitStop", "VER", null));
+        sut._timelineEvents.Enqueue(new RaceTimelineEvent(5, "SafetyCar", null, null));
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Equal(2, snapshot.Timeline.Count);
+        Assert.Equal(5, snapshot.Timeline[0].LapNumber);
+        Assert.Equal(20, snapshot.Timeline[1].LapNumber);
+    }
+
+    [Fact]
+    public void TryEnqueueFastestLap_FirstFastLap_EnqueuesFastestLapEvent()
+    {
+        var sut = CreateOrchestrator();
+        sut._driverInfo = new Dictionary<int, OpenF1DriverInfoDto> { [1] = new(1, "VER", "Red Bull Racing", "3671C6") };
+
+        sut.TryEnqueueFastestLap(MakeLapWithSectors(1, 10, s1: 25, s2: 30, s3: 20)); // duration = 75
+
+        var snapshot = sut.BuildSnapshot();
+        var evt = Assert.Single(snapshot.Timeline);
+        Assert.Equal("FastestLap", evt.EventType);
+        Assert.Equal("VER", evt.DriverCode);
+        Assert.Equal(10, evt.LapNumber);
+    }
+
+    [Fact]
+    public void TryEnqueueFastestLap_SlowerLap_DoesNotEnqueue()
+    {
+        var sut = CreateOrchestrator();
+        sut.TryEnqueueFastestLap(MakeLapWithSectors(1, 10, s1: 25, s2: 30, s3: 20)); // duration = 75, sets baseline
+        sut.TryEnqueueFastestLap(MakeLapWithSectors(1, 11, s1: 26, s2: 30, s3: 20)); // duration = 76, slower
+
+        var snapshot = sut.BuildSnapshot();
+        Assert.Single(snapshot.Timeline);
+    }
+
+    [Fact]
+    public void TryEnqueueFastestLap_NoLapDuration_DoesNotEnqueue()
+    {
+        var sut = CreateOrchestrator();
+        sut.TryEnqueueFastestLap(MakeLapWithSectors(1, 10, s1: 25)); // s2/s3 null => LapDuration null
+
+        Assert.Empty(sut.BuildSnapshot().Timeline);
+    }
 }

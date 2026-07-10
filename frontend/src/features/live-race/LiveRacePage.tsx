@@ -3,6 +3,7 @@ import { GapList } from './GapList/GapList'
 import { LapTimeChart } from './LapTimeChart/LapTimeChart'
 import { TrackMap } from './TrackMap/TrackMap'
 import { FastestSectorBoard } from './FastestSectorBoard/FastestSectorBoard'
+import { RaceEventTimeline } from './RaceEventTimeline/RaceEventTimeline'
 import { useSignalRConnection } from './hooks/useSignalRConnection'
 import { useFallbackState } from './hooks/useFallbackState'
 import { useLastRaceResult } from './hooks/useLastRaceResult'
@@ -51,6 +52,7 @@ export function LiveRacePage() {
       <div className="flex flex-col gap-4">
         <GapList />
         <FastestSectorBoard />
+        <RaceEventTimeline />
         <TrackMap circuitId={circuitId} />
         <LapTimeChart />
       </div>

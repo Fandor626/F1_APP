@@ -50,4 +50,22 @@ public class OpenF1Client(HttpClient httpClient) : IOpenF1Client
 
         return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1LocationDto>>(url, ct) ?? [];
     }
+
+    public async Task<IReadOnlyList<OpenF1RaceControlDto>> GetLatestRaceControlAsync(DateTimeOffset since, CancellationToken ct)
+    {
+        var url = since == DateTimeOffset.MinValue
+            ? "race_control?session_key=latest"
+            : $"race_control?session_key=latest&date>{since:yyyy-MM-ddTHH:mm:ss.fff}";
+
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1RaceControlDto>>(url, ct) ?? [];
+    }
+
+    public async Task<IReadOnlyList<OpenF1PitDto>> GetLatestPitStopsAsync(DateTimeOffset since, CancellationToken ct)
+    {
+        var url = since == DateTimeOffset.MinValue
+            ? "pit?session_key=latest"
+            : $"pit?session_key=latest&date>{since:yyyy-MM-ddTHH:mm:ss.fff}";
+
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1PitDto>>(url, ct) ?? [];
+    }
 }

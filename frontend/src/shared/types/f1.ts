@@ -34,6 +34,13 @@ export interface FastestSectorBoard {
   s3: FastestSectorEntry | null
 }
 
+export interface RaceTimelineEvent {
+  lapNumber: number
+  eventType: 'SafetyCar' | 'VirtualSafetyCar' | 'RedFlag' | 'PitStop' | 'Dnf' | 'FastestLap'
+  driverCode: string | null
+  detail: string | null
+}
+
 export interface RaceStateSnapshot {
   capturedAt: string
   drivers: DriverState[]
@@ -43,6 +50,7 @@ export interface RaceStateSnapshot {
   fallbackRaceName: string | null
   circuitId: string | null
   fastestSectors: FastestSectorBoard | null
+  timeline: RaceTimelineEvent[]
 }
 
 export interface LastRaceResult {
