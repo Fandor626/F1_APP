@@ -9,9 +9,11 @@ import { useFallbackState } from './hooks/useFallbackState'
 import { useLastRaceResult } from './hooks/useLastRaceResult'
 import { useLiveRaceStore } from './store/liveRaceStore'
 import { normalizeSnapshot } from '../../shared/utils/normalizeSnapshot'
+import { useRecordLiveVisit } from '../fan-engagement/useRecordLiveVisit'
 
 export function LiveRacePage() {
   useSignalRConnection()
+  useRecordLiveVisit()
 
   const { isFallback, isStale, fallbackRaceName } = useFallbackState()
   const drivers = useLiveRaceStore(s => s.drivers)

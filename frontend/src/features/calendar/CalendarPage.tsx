@@ -1,4 +1,5 @@
 import { useRaceSchedule, type RaceWeekend } from '../../shared/api/ergast'
+import { StreakCounter } from '../fan-engagement'
 import { RaceWeekendCard } from './RaceWeekendCard'
 
 function splitSchedule(races: RaceWeekend[], now: Date) {
@@ -54,7 +55,10 @@ export function CalendarPage() {
 
   return (
     <div className="mx-auto max-w-[1100px] px-7 py-8 pb-16">
-      <h1 className="mb-1 text-[26px] font-bold tracking-[-0.01em] text-text-primary">Race Calendar</h1>
+      <div className="mb-1 flex items-center justify-between">
+        <h1 className="text-[26px] font-bold tracking-[-0.01em] text-text-primary">Race Calendar</h1>
+        <StreakCounter />
+      </div>
       <p className="mb-7 text-[13px] text-text-secondary">Season schedule. Next race highlighted.</p>
 
       {isPending && <CalendarSkeleton />}
