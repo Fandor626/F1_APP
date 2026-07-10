@@ -292,6 +292,73 @@ public class ErgastClientContractTests : IDisposable
     }
 
     [Fact]
+    public async Task GetRaceResultsByRoundAsync_ParsesResultsWithPoints()
+    {
+        _server
+            .Given(Request.Create().WithPath("/current/1/results.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    RaceTable = new
+                    {
+                        Races = new[]
+                        {
+                            new
+                            {
+                                raceName = "Bahrain Grand Prix",
+                                round = "1",
+                                date = "2026-03-08",
+                                Results = new[]
+                                {
+                                    new
+                                    {
+                                        position = "1",
+                                        number = "4",
+                                        Driver = new { driverId = "norris", givenName = "Lando", familyName = "Norris", code = "NOR" },
+                                        Constructor = new { constructorId = "mclaren", name = "McLaren" },
+                                        Time = new { time = "1:32:13.576" },
+                                        status = "Finished",
+                                        points = "25",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var result = await client.GetRaceResultsByRoundAsync(1, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("Bahrain Grand Prix", result.RaceName);
+        var single = Assert.Single(result.Results);
+        Assert.Equal("25", single.Points);
+        Assert.Equal("1", single.Position);
+    }
+
+    [Fact]
+    public async Task GetRaceResultsByRoundAsync_ReturnsNullWhenRoundNotYetRun()
+    {
+        _server
+            .Given(Request.Create().WithPath("/current/20/results.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { RaceTable = new { Races = Array.Empty<object>() } },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var result = await client.GetRaceResultsByRoundAsync(20, CancellationToken.None);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
     public async Task GetCircuitPitStopsAsync_ResolvesRoundThenReturnsPitStops()
     {
         _server

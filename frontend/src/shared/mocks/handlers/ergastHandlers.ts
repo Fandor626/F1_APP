@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import type { ConstructorStanding, DriverStanding, RaceWeekend, RaceWeekendDetail } from '../../api/ergast'
+import type { ConstructorStanding, DriverStanding, DriverTrajectory, RaceWeekend, RaceWeekendDetail } from '../../api/ergast'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
 
@@ -44,6 +44,49 @@ export const sampleConstructorStandings: ConstructorStanding[] = [
   { position: 4, constructorName: 'Mercedes', points: 308, wins: 1, nationality: 'German' },
 ]
 
+export const sampleTrajectory: DriverTrajectory[] = [
+  {
+    driverId: 'norris',
+    driverName: 'Norris',
+    constructorName: 'McLaren',
+    points: [
+      { round: 1, raceName: 'Bahrain Grand Prix', resultPosition: 1, pointsThisRound: 25, cumulativePoints: 25 },
+      { round: 2, raceName: 'Saudi Arabian Grand Prix', resultPosition: 2, pointsThisRound: 18, cumulativePoints: 43 },
+      { round: 3, raceName: 'Australian Grand Prix', resultPosition: 1, pointsThisRound: 25, cumulativePoints: 68 },
+    ],
+  },
+  {
+    driverId: 'verstappen',
+    driverName: 'Verstappen',
+    constructorName: 'Red Bull Racing',
+    points: [
+      { round: 1, raceName: 'Bahrain Grand Prix', resultPosition: 2, pointsThisRound: 18, cumulativePoints: 18 },
+      { round: 2, raceName: 'Saudi Arabian Grand Prix', resultPosition: 1, pointsThisRound: 25, cumulativePoints: 43 },
+      { round: 3, raceName: 'Australian Grand Prix', resultPosition: 3, pointsThisRound: 15, cumulativePoints: 58 },
+    ],
+  },
+  {
+    driverId: 'leclerc',
+    driverName: 'Leclerc',
+    constructorName: 'Ferrari',
+    points: [
+      { round: 1, raceName: 'Bahrain Grand Prix', resultPosition: 3, pointsThisRound: 15, cumulativePoints: 15 },
+      { round: 2, raceName: 'Saudi Arabian Grand Prix', resultPosition: 4, pointsThisRound: 12, cumulativePoints: 27 },
+      { round: 3, raceName: 'Australian Grand Prix', resultPosition: 2, pointsThisRound: 18, cumulativePoints: 45 },
+    ],
+  },
+  {
+    driverId: 'russell',
+    driverName: 'Russell',
+    constructorName: 'Mercedes',
+    points: [
+      { round: 1, raceName: 'Bahrain Grand Prix', resultPosition: 5, pointsThisRound: 10, cumulativePoints: 10 },
+      { round: 2, raceName: 'Saudi Arabian Grand Prix', resultPosition: 3, pointsThisRound: 15, cumulativePoints: 25 },
+      { round: 3, raceName: 'Australian Grand Prix', resultPosition: 4, pointsThisRound: 12, cumulativePoints: 37 },
+    ],
+  },
+]
+
 export const sampleRaceDetailsByRound: Record<number, RaceWeekendDetail> = {
   1: {
     season: 2026,
@@ -82,6 +125,7 @@ export const ergastHandlers = [
   http.get(`${API_BASE_URL}/api/races`, () => HttpResponse.json(sampleRaceSchedule)),
   http.get(`${API_BASE_URL}/api/standings/drivers`, () => HttpResponse.json(sampleDriverStandings)),
   http.get(`${API_BASE_URL}/api/standings/constructors`, () => HttpResponse.json(sampleConstructorStandings)),
+  http.get(`${API_BASE_URL}/api/standings/trajectory`, () => HttpResponse.json(sampleTrajectory)),
   http.get(`${API_BASE_URL}/api/races/:round/win-probability`, () => HttpResponse.json([])),
   http.get(`${API_BASE_URL}/api/races/:round`, ({ params }) => {
     const detail = sampleRaceDetailsByRound[Number(params.round)]

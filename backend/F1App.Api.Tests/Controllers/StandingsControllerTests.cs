@@ -74,4 +74,46 @@ public class StandingsControllerTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Contains("\"wins\"", body);
         Assert.Contains("\"nationality\"", body);
     }
+
+    [Fact]
+    public async Task GetTrajectory_ReturnsCamelCaseTrajectory()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceTableDto("2026",
+            [
+                new ErgastRaceDto("2026", "1", "Bahrain Grand Prix",
+                    new ErgastCircuitDto("bahrain", "Bahrain International Circuit", new ErgastLocationDto("Sakhir", "Bahrain")),
+                    "2026-03-08", "18:00:00Z", null, null, null, null, null, null),
+            ]));
+        ergastClient
+            .Setup(c => c.GetCurrentDriverStandingsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new ErgastDriverStandingDto("1", "25", "1", new ErgastDriverDto("norris", "Lando", "Norris"), [new ErgastConstructorDto("mclaren", "McLaren")])]);
+        ergastClient
+            .Setup(c => c.GetRaceResultsByRoundAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceResultRaceDto("Bahrain Grand Prix", "1", "2026-03-08",
+            [
+                new ErgastResultDto(new ErgastDriverDto("norris", "Lando", "Norris"), new ErgastConstructorDto("mclaren", "McLaren"), null, "1", "4", "Finished", "25"),
+            ]));
+
+        var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddScoped<IErgastClient>(_ => ergastClient.Object)))
+            .CreateClient();
+
+        var response = await client.GetAsync("/api/standings/trajectory");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var trajectories = await response.Content.ReadFromJsonAsync<List<DriverTrajectory>>();
+        var trajectory = Assert.Single(trajectories!);
+        Assert.Equal("Norris", trajectory.DriverName);
+        var point = Assert.Single(trajectory.Points);
+        Assert.Equal("Bahrain Grand Prix", point.RaceName);
+        Assert.Equal(25, point.CumulativePoints);
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"cumulativePoints\"", body);
+        Assert.Contains("\"raceName\"", body);
+    }
 }

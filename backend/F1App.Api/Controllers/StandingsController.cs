@@ -6,7 +6,7 @@ namespace F1App.Api.Controllers;
 
 [ApiController]
 [Route("api/standings")]
-public class StandingsController(StandingsService standingsService) : ControllerBase
+public class StandingsController(StandingsService standingsService, RaceScheduleService raceScheduleService) : ControllerBase
 {
     [HttpGet("drivers")]
     public async Task<ActionResult<IReadOnlyList<DriverStanding>>> GetDrivers(CancellationToken cancellationToken)
@@ -20,5 +20,13 @@ public class StandingsController(StandingsService standingsService) : Controller
     {
         var standings = await standingsService.GetCurrentConstructorStandingsAsync(cancellationToken);
         return Ok(standings);
+    }
+
+    [HttpGet("trajectory")]
+    public async Task<ActionResult<IReadOnlyList<DriverTrajectory>>> GetTrajectory(CancellationToken cancellationToken)
+    {
+        var schedule = await raceScheduleService.GetCurrentSeasonScheduleAsync(cancellationToken);
+        var trajectory = await standingsService.GetChampionshipTrajectoryAsync(schedule, cancellationToken);
+        return Ok(trajectory);
     }
 }

@@ -42,6 +42,26 @@ const ConstructorStandingsSchema = z.array(ConstructorStandingSchema)
 
 export type ConstructorStanding = z.infer<typeof ConstructorStandingSchema>
 
+const TrajectoryPointSchema = z.object({
+  round: z.number(),
+  raceName: z.string(),
+  resultPosition: z.number().nullable(),
+  pointsThisRound: z.number(),
+  cumulativePoints: z.number(),
+})
+
+const DriverTrajectorySchema = z.object({
+  driverId: z.string(),
+  driverName: z.string(),
+  constructorName: z.string(),
+  points: z.array(TrajectoryPointSchema),
+})
+
+const TrajectoriesSchema = z.array(DriverTrajectorySchema)
+
+export type TrajectoryPoint = z.infer<typeof TrajectoryPointSchema>
+export type DriverTrajectory = z.infer<typeof DriverTrajectorySchema>
+
 const SessionSchema = z.object({
   name: z.string(),
   start: z.string(),
@@ -140,6 +160,15 @@ export function useConstructorStandings() {
   return useQuery({
     queryKey: queryKeys.standings.constructors,
     queryFn: ({ signal }) => fetchJson('/api/standings/constructors', ConstructorStandingsSchema, signal),
+    staleTime: STANDINGS_STALE_TIME_MS,
+    retry: false,
+  })
+}
+
+export function useChampionshipTrajectory() {
+  return useQuery({
+    queryKey: queryKeys.standings.trajectory,
+    queryFn: ({ signal }) => fetchJson('/api/standings/trajectory', TrajectoriesSchema, signal),
     staleTime: STANDINGS_STALE_TIME_MS,
     retry: false,
   })

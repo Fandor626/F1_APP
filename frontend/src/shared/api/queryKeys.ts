@@ -6,5 +6,6 @@ export const queryKeys = {
   standings: {
     drivers: ['standings', 'drivers', 'current'] as const,
     constructors: ['standings', 'constructors', 'current'] as const,
+    trajectory: ['standings', 'trajectory', 'current'] as const,
   },
 }

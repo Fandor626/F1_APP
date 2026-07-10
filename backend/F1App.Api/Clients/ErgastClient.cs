@@ -66,6 +66,17 @@ public class ErgastClient(HttpClient httpClient) : IErgastClient
             : response.MRData.RaceTable.Races[0];
     }
 
+    public async Task<ErgastRaceResultRaceDto?> GetRaceResultsByRoundAsync(int round, CancellationToken cancellationToken)
+    {
+        var response = await httpClient.GetFromJsonAsync<ErgastRaceResultResponseDto>(
+            $"current/{round}/results.json", cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for round {round} results.");
+
+        return response.MRData.RaceTable.Races.Count == 0
+            ? null
+            : response.MRData.RaceTable.Races[0];
+    }
+
     public async Task<IReadOnlyList<ErgastPitStopDto>> GetCircuitPitStopsAsync(int season, string circuitId, CancellationToken cancellationToken)
     {
         var raceResponse = await httpClient.GetFromJsonAsync<ErgastRaceResultResponseDto>(

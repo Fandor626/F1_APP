@@ -23,7 +23,8 @@ public record ErgastResultDto(
     [property: JsonPropertyName("Time")] ErgastResultTimeDto? Time,
     [property: JsonPropertyName("position")] string? Position = null,
     [property: JsonPropertyName("number")] string? Number = null,
-    [property: JsonPropertyName("status")] string? Status = null);
+    [property: JsonPropertyName("status")] string? Status = null,
+    [property: JsonPropertyName("points")] string? Points = null);
 
 public record ErgastResultTimeDto(
     [property: JsonPropertyName("time")] string Time);
