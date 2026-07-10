@@ -728,5 +728,109 @@ public class ErgastClientContractTests : IDisposable
         Assert.Null(champion);
     }
 
+    [Fact]
+    public async Task GetAllDriversAsync_ParsesTheDriverList()
+    {
+        _server
+            .Given(Request.Create().WithPath("/drivers.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    DriverTable = new
+                    {
+                        Drivers = new[]
+                        {
+                            new { driverId = "max_verstappen", givenName = "Max", familyName = "Verstappen" },
+                            new { driverId = "hamilton", givenName = "Lewis", familyName = "Hamilton" },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var drivers = await client.GetAllDriversAsync(CancellationToken.None);
+
+        Assert.Equal(2, drivers.Count);
+    }
+
+    [Fact]
+    public async Task GetFilteredDriverResultsAsync_BuildsUrlWithSeasonAndCircuit()
+    {
+        _server
+            .Given(Request.Create().WithPath("/2023/drivers/max_verstappen/circuits/monza/results.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { RaceTable = new { Races = Array.Empty<object>() } },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var races = await client.GetFilteredDriverResultsAsync("max_verstappen", 2023, "monza", CancellationToken.None);
+
+        Assert.Empty(races);
+    }
+
+    [Fact]
+    public async Task GetFilteredDriverResultsAsync_BuildsUrlWithNeitherFilter()
+    {
+        _server
+            .Given(Request.Create().WithPath("/drivers/max_verstappen/results.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new { RaceTable = new { Races = Array.Empty<object>() } },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var races = await client.GetFilteredDriverResultsAsync("max_verstappen", null, null, CancellationToken.None);
+
+        Assert.Empty(races);
+    }
+
+    [Fact]
+    public async Task GetDriverQualifyingHistoryAsync_ParsesQualifyingPositions()
+    {
+        _server
+            .Given(Request.Create().WithPath("/drivers/max_verstappen/qualifying.json").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBodyAsJson(new
+            {
+                MRData = new
+                {
+                    RaceTable = new
+                    {
+                        Races = new[]
+                        {
+                            new
+                            {
+                                Circuit = new { circuitId = "albert_park", circuitName = "Albert Park", Location = new { locality = "Melbourne", country = "Australia" } },
+                                QualifyingResults = new[]
+                                {
+                                    new
+                                    {
+                                        position = "12",
+                                        Driver = new { driverId = "max_verstappen", givenName = "Max", familyName = "Verstappen" },
+                                        Constructor = new { constructorId = "toro_rosso", name = "Toro Rosso" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }));
+
+        using var httpClient = new HttpClient { BaseAddress = new Uri(_server.Urls[0]) };
+        var client = new ErgastClient(httpClient);
+
+        var races = await client.GetDriverQualifyingHistoryAsync("max_verstappen", null, null, CancellationToken.None);
+
+        var race = Assert.Single(races);
+        Assert.Equal("12", race.QualifyingResults[0].Position);
+    }
+
     public void Dispose() => _server.Stop();
 }

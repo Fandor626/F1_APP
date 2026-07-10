@@ -353,3 +353,61 @@ export function useDriverProfile(driverId: string | undefined) {
     retry: false,
   })
 }
+
+const DriverOptionSchema = z.object({
+  driverId: z.string(),
+  fullName: z.string(),
+})
+
+const DriverOptionsSchema = z.array(DriverOptionSchema)
+
+export type DriverOption = z.infer<typeof DriverOptionSchema>
+
+export function useAllDrivers() {
+  return useQuery({
+    queryKey: queryKeys.allDrivers,
+    queryFn: ({ signal }) => fetchJson('/api/drivers', DriverOptionsSchema, signal),
+    staleTime: HISTORICAL_STALE_TIME_MS,
+    retry: false,
+  })
+}
+
+const HeadToHeadDriverStatsSchema = z.object({
+  driverId: z.string(),
+  fullName: z.string(),
+  qualifyingAveragePosition: z.number().nullable(),
+  raceFinishAveragePosition: z.number().nullable(),
+  dnfCount: z.number(),
+  pointsScored: z.number(),
+  fastestLaps: z.number(),
+  wins: z.number(),
+  racesCompared: z.number(),
+})
+
+const HeadToHeadComparisonSchema = z
+  .object({
+    driverA: HeadToHeadDriverStatsSchema,
+    driverB: HeadToHeadDriverStatsSchema,
+  })
+  .nullable()
+
+export type HeadToHeadDriverStats = z.infer<typeof HeadToHeadDriverStatsSchema>
+export type HeadToHeadComparison = z.infer<typeof HeadToHeadComparisonSchema>
+
+export function useHeadToHeadComparison(
+  driverA: string | null,
+  driverB: string | null,
+  season: number | null,
+  circuitId: string | null,
+) {
+  const params = new URLSearchParams({ driverA: driverA ?? '', driverB: driverB ?? '' })
+  if (season) params.set('season', String(season))
+  if (circuitId) params.set('circuitId', circuitId)
+
+  return useQuery({
+    queryKey: queryKeys.headToHead(driverA ?? '', driverB ?? '', season, circuitId),
+    queryFn: ({ signal }) => fetchNullable404Json(`/api/drivers/compare?${params}`, HeadToHeadComparisonSchema, signal),
+    enabled: !!driverA && !!driverB,
+    retry: false,
+  })
+}

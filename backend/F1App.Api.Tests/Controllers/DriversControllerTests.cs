@@ -81,4 +81,60 @@ public class DriversControllerTests : IClassFixture<WebApplicationFactory<Progra
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GetAllDrivers_ReturnsCamelCaseDriverOptions()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetAllDriversAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new ErgastDriverDto("max_verstappen", "Max", "Verstappen")]);
+
+        var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddScoped<IErgastClient>(_ => ergastClient.Object)))
+            .CreateClient();
+
+        var response = await client.GetAsync("/api/drivers");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var drivers = await response.Content.ReadFromJsonAsync<List<DriverOption>>();
+        var driver = Assert.Single(drivers!);
+        Assert.Equal("Max Verstappen", driver.FullName);
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"driverId\"", body);
+        Assert.Contains("\"fullName\"", body);
+    }
+
+    [Fact]
+    public async Task Compare_ReturnsCamelCaseComparison()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient.Setup(c => c.GetDriverInfoAsync("max_verstappen", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastDriverDto("max_verstappen", "Max", "Verstappen"));
+        ergastClient.Setup(c => c.GetDriverInfoAsync("hamilton", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastDriverDto("hamilton", "Lewis", "Hamilton"));
+        ergastClient.Setup(c => c.GetFilteredDriverResultsAsync(It.IsAny<string>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        ergastClient.Setup(c => c.GetDriverQualifyingHistoryAsync(It.IsAny<string>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var client = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+                services.AddScoped<IErgastClient>(_ => ergastClient.Object)))
+            .CreateClient();
+
+        var response = await client.GetAsync("/api/drivers/compare?driverA=max_verstappen&driverB=hamilton");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var comparison = await response.Content.ReadFromJsonAsync<HeadToHeadComparison>();
+        Assert.NotNull(comparison);
+        Assert.Equal("Max Verstappen", comparison!.DriverA.FullName);
+        Assert.Equal("Lewis Hamilton", comparison.DriverB.FullName);
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"qualifyingAveragePosition\"", body);
+        Assert.Contains("\"raceFinishAveragePosition\"", body);
+    }
 }

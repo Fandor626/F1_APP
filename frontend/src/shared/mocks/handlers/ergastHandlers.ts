@@ -2,9 +2,11 @@ import { http, HttpResponse } from 'msw'
 import type {
   CircuitProfile,
   ConstructorStanding,
+  DriverOption,
   DriverProfile,
   DriverStanding,
   DriverTrajectory,
+  HeadToHeadComparison,
   RaceWeekend,
   RaceWeekendDetail,
   SeasonWrapped,
@@ -183,6 +185,37 @@ export const sampleDriverProfile: DriverProfile = {
   ],
 }
 
+export const sampleDriverOptions: DriverOption[] = [
+  { driverId: 'max_verstappen', fullName: 'Max Verstappen' },
+  { driverId: 'hamilton', fullName: 'Lewis Hamilton' },
+  { driverId: 'norris', fullName: 'Lando Norris' },
+]
+
+export const sampleHeadToHeadComparison: HeadToHeadComparison = {
+  driverA: {
+    driverId: 'max_verstappen',
+    fullName: 'Max Verstappen',
+    qualifyingAveragePosition: 2.4,
+    raceFinishAveragePosition: 2.1,
+    dnfCount: 12,
+    pointsScored: 2586,
+    fastestLaps: 33,
+    wins: 65,
+    racesCompared: 218,
+  },
+  driverB: {
+    driverId: 'hamilton',
+    fullName: 'Lewis Hamilton',
+    qualifyingAveragePosition: 3.1,
+    raceFinishAveragePosition: 3.4,
+    dnfCount: 24,
+    pointsScored: 4862,
+    fastestLaps: 61,
+    wins: 105,
+    racesCompared: 350,
+  },
+}
+
 export const ergastHandlers = [
   http.get(`${API_BASE_URL}/api/races`, () => HttpResponse.json(sampleRaceSchedule)),
   http.get(`${API_BASE_URL}/api/standings/drivers`, () => HttpResponse.json(sampleDriverStandings)),
@@ -199,6 +232,18 @@ export const ergastHandlers = [
       ? HttpResponse.json(sampleCircuitProfile)
       : new HttpResponse(null, { status: 404 })
   }),
+  // Registered before /api/drivers/:driverId so these more specific paths
+  // win MSW's first-match handler order.
+  http.get(`${API_BASE_URL}/api/drivers/compare`, ({ request }) => {
+    const url = new URL(request.url)
+    const driverA = url.searchParams.get('driverA')
+    const driverB = url.searchParams.get('driverB')
+    const known = new Set([sampleHeadToHeadComparison.driverA!.driverId, sampleHeadToHeadComparison.driverB!.driverId])
+    return driverA && driverB && known.has(driverA) && known.has(driverB)
+      ? HttpResponse.json(sampleHeadToHeadComparison)
+      : new HttpResponse(null, { status: 404 })
+  }),
+  http.get(`${API_BASE_URL}/api/drivers`, () => HttpResponse.json(sampleDriverOptions)),
   http.get(`${API_BASE_URL}/api/drivers/:driverId`, ({ params }) => {
     return params.driverId === sampleDriverProfile.driverId
       ? HttpResponse.json(sampleDriverProfile)

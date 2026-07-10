@@ -5,6 +5,9 @@ export const queryKeys = {
   lastRaceResult: ['races', 'last-result'] as const,
   circuitProfile: (circuitId: string) => ['circuits', 'profile', circuitId] as const,
   driverProfile: (driverId: string) => ['drivers', 'profile', driverId] as const,
+  allDrivers: ['drivers', 'all'] as const,
+  headToHead: (driverA: string, driverB: string, season: number | null, circuitId: string | null) =>
+    ['drivers', 'compare', driverA, driverB, season, circuitId] as const,
   standings: {
     drivers: ['standings', 'drivers', 'current'] as const,
     constructors: ['standings', 'constructors', 'current'] as const,

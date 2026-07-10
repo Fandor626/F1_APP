@@ -169,4 +169,40 @@ public class ErgastClient(HttpClient httpClient) : IErgastClient
             ? null
             : lists[0].DriverStandings[0];
     }
+
+    public async Task<IReadOnlyList<ErgastDriverDto>> GetAllDriversAsync(CancellationToken cancellationToken)
+    {
+        // total is 881 at time of writing — limit=1000 fits the entire
+        // all-time F1 driver roster in a single page.
+        var response = await httpClient.GetFromJsonAsync<ErgastDriverInfoResponseDto>(
+            "drivers.json?limit=1000", cancellationToken)
+            ?? throw new InvalidOperationException("Ergast returned an empty response for the all-time driver list.");
+
+        return response.MRData.DriverTable.Drivers;
+    }
+
+    private static string BuildDriverScopedPath(string driverId, int? season, string? circuitId, string resource)
+    {
+        var prefix = season is not null ? $"{season}/" : "";
+        var circuitSegment = circuitId is not null ? $"circuits/{circuitId}/" : "";
+        return $"{prefix}drivers/{driverId}/{circuitSegment}{resource}";
+    }
+
+    public async Task<IReadOnlyList<ErgastRaceResultRaceDto>> GetFilteredDriverResultsAsync(string driverId, int? season, string? circuitId, CancellationToken cancellationToken)
+    {
+        var path = BuildDriverScopedPath(driverId, season, circuitId, "results.json?limit=1000");
+        var response = await httpClient.GetFromJsonAsync<ErgastRaceResultResponseDto>(path, cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for {path}.");
+
+        return response.MRData.RaceTable.Races;
+    }
+
+    public async Task<IReadOnlyList<ErgastQualifyingRaceDto>> GetDriverQualifyingHistoryAsync(string driverId, int? season, string? circuitId, CancellationToken cancellationToken)
+    {
+        var path = BuildDriverScopedPath(driverId, season, circuitId, "qualifying.json?limit=1000");
+        var response = await httpClient.GetFromJsonAsync<ErgastQualifyingResponseDto>(path, cancellationToken)
+            ?? throw new InvalidOperationException($"Ergast returned an empty response for {path}.");
+
+        return response.MRData.RaceTable.Races;
+    }
 }

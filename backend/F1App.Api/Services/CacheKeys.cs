@@ -19,4 +19,9 @@ public static class CacheKeys
     public static string CircuitProfile(string circuitId) => $"circuit:profile:{circuitId}";
 
     public static string DriverProfile(string driverId) => $"driver:profile:{driverId}";
+
+    public const string AllDrivers = "drivers:all";
+
+    public static string DriverStatsForComparison(string driverId, int? season, string? circuitId) =>
+        $"driver:h2h-stats:{driverId}:{season?.ToString() ?? "any"}:{circuitId ?? "any"}";
 }
