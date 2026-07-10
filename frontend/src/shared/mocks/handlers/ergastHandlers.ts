@@ -27,15 +27,21 @@ export const sampleRaceSchedule: RaceWeekend[] = [
 ]
 
 export const sampleDriverStandings: DriverStanding[] = [
-  { position: 1, driverName: 'Norris', constructorName: 'McLaren', points: 312 },
-  { position: 2, driverName: 'Verstappen', constructorName: 'Red Bull Racing', points: 289 },
-  { position: 3, driverName: 'Leclerc', constructorName: 'Ferrari', points: 241 },
+  { position: 1, driverName: 'Norris', constructorName: 'McLaren', points: 298, wins: 7, nationality: 'British' },
+  { position: 2, driverName: 'Verstappen', constructorName: 'Red Bull Racing', points: 277, wins: 5, nationality: 'Dutch' },
+  { position: 3, driverName: 'Leclerc', constructorName: 'Ferrari', points: 229, wins: 2, nationality: 'Monegasque' },
+  { position: 4, driverName: 'Piastri', constructorName: 'McLaren', points: 214, wins: 3, nationality: 'Australian' },
+  { position: 5, driverName: 'Russell', constructorName: 'Mercedes', points: 187, wins: 1, nationality: 'British' },
+  { position: 6, driverName: 'Hamilton', constructorName: 'Ferrari', points: 163, wins: 0, nationality: 'British' },
+  { position: 7, driverName: 'Antonelli', constructorName: 'Mercedes', points: 121, wins: 0, nationality: 'Italian' },
+  { position: 8, driverName: 'Pérez', constructorName: 'Red Bull Racing', points: 98, wins: 0, nationality: 'Mexican' },
 ]
 
 export const sampleConstructorStandings: ConstructorStanding[] = [
-  { position: 1, constructorName: 'McLaren', points: 567 },
-  { position: 2, constructorName: 'Ferrari', points: 438 },
-  { position: 3, constructorName: 'Red Bull Racing', points: 401 },
+  { position: 1, constructorName: 'McLaren', points: 512, wins: 10, nationality: 'British' },
+  { position: 2, constructorName: 'Ferrari', points: 392, wins: 2, nationality: 'Italian' },
+  { position: 3, constructorName: 'Red Bull Racing', points: 375, wins: 5, nationality: 'Austrian' },
+  { position: 4, constructorName: 'Mercedes', points: 308, wins: 1, nationality: 'German' },
 ]
 
 export const sampleRaceDetailsByRound: Record<number, RaceWeekendDetail> = {

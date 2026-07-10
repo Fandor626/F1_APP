@@ -25,7 +25,7 @@ public class StandingsControllerTests : IClassFixture<WebApplicationFactory<Prog
         var ergastClient = new Mock<IErgastClient>();
         ergastClient
             .Setup(c => c.GetCurrentDriverStandingsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new ErgastDriverStandingDto("1", "156", "5", new ErgastDriverDto("antonelli", "Andrea Kimi", "Antonelli"), [new ErgastConstructorDto("mercedes", "Mercedes")])]);
+            .ReturnsAsync([new ErgastDriverStandingDto("1", "156", "5", new ErgastDriverDto("antonelli", "Andrea Kimi", "Antonelli", Nationality: "Italian"), [new ErgastConstructorDto("mercedes", "Mercedes")])]);
 
         var client = _factory.WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
@@ -38,9 +38,13 @@ public class StandingsControllerTests : IClassFixture<WebApplicationFactory<Prog
         var standings = await response.Content.ReadFromJsonAsync<List<DriverStanding>>();
         var standing = Assert.Single(standings!);
         Assert.Equal("Antonelli", standing.DriverName);
+        Assert.Equal(5, standing.Wins);
+        Assert.Equal("Italian", standing.Nationality);
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("\"driverName\"", body);
+        Assert.Contains("\"wins\"", body);
+        Assert.Contains("\"nationality\"", body);
     }
 
     [Fact]
@@ -49,7 +53,7 @@ public class StandingsControllerTests : IClassFixture<WebApplicationFactory<Prog
         var ergastClient = new Mock<IErgastClient>();
         ergastClient
             .Setup(c => c.GetCurrentConstructorStandingsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new ErgastConstructorStandingDto("1", "262", "6", new ErgastConstructorDto("mercedes", "Mercedes"))]);
+            .ReturnsAsync([new ErgastConstructorStandingDto("1", "262", "6", new ErgastConstructorDto("mercedes", "Mercedes", "German"))]);
 
         var client = _factory.WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
@@ -62,8 +66,12 @@ public class StandingsControllerTests : IClassFixture<WebApplicationFactory<Prog
         var standings = await response.Content.ReadFromJsonAsync<List<ConstructorStanding>>();
         var standing = Assert.Single(standings!);
         Assert.Equal("Mercedes", standing.ConstructorName);
+        Assert.Equal(6, standing.Wins);
+        Assert.Equal("German", standing.Nationality);
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("\"constructorName\"", body);
+        Assert.Contains("\"wins\"", body);
+        Assert.Contains("\"nationality\"", body);
     }
 }

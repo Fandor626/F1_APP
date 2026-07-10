@@ -60,7 +60,7 @@ describe('RaceWeekendCard', () => {
     await waitFor(() => expect(screen.getByText('Norris')).toBeInTheDocument())
     expect(screen.getByText("Drivers' Championship")).toBeInTheDocument()
     expect(screen.getByText("Constructors' Championship")).toBeInTheDocument()
-    expect(screen.getByText('312 pts')).toBeInTheDocument()
+    expect(screen.getByText('298 pts')).toBeInTheDocument()
     expect(screen.getByText('McLaren')).toBeInTheDocument()
   })
 })

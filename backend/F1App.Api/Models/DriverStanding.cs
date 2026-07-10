@@ -6,4 +6,6 @@ public record DriverStanding(
     string DriverName,      // family-name-only, used on standings cards
     string FullName,        // "{givenName} {familyName}", used for championship delta
     string ConstructorName,
-    decimal Points);
+    decimal Points,
+    int Wins = 0,
+    string Nationality = "");

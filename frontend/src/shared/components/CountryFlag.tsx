@@ -2,6 +2,7 @@
 // mapped to ISO 3166-1 alpha-2 so the flag itself can be derived generically
 // (regional indicator symbols) instead of needing one emoji per country.
 const COUNTRY_NAME_TO_ISO: Record<string, string> = {
+  Argentina: 'AR',
   Australia: 'AU',
   Austria: 'AT',
   Azerbaijan: 'AZ',
@@ -10,6 +11,8 @@ const COUNTRY_NAME_TO_ISO: Record<string, string> = {
   Brazil: 'BR',
   Canada: 'CA',
   China: 'CN',
+  Denmark: 'DK',
+  Finland: 'FI',
   France: 'FR',
   Germany: 'DE',
   Hungary: 'HU',
@@ -18,6 +21,8 @@ const COUNTRY_NAME_TO_ISO: Record<string, string> = {
   Mexico: 'MX',
   Monaco: 'MC',
   Netherlands: 'NL',
+  'New Zealand': 'NZ',
+  Poland: 'PL',
   Portugal: 'PT',
   Qatar: 'QA',
   Russia: 'RU',
@@ -26,6 +31,9 @@ const COUNTRY_NAME_TO_ISO: Record<string, string> = {
   'South Africa': 'ZA',
   'South Korea': 'KR',
   Spain: 'ES',
+  Sweden: 'SE',
+  Switzerland: 'CH',
+  Thailand: 'TH',
   Turkey: 'TR',
   UAE: 'AE',
   UK: 'GB',

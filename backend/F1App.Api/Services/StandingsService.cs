@@ -47,11 +47,15 @@ public class StandingsService(IErgastClient ergastClient, IMemoryCache cache)
             standing.Driver.FamilyName,
             $"{standing.Driver.GivenName} {standing.Driver.FamilyName}",
             standing.Constructors.Count > 0 ? standing.Constructors[0].Name : string.Empty,
-            decimal.Parse(standing.Points, CultureInfo.InvariantCulture));
+            decimal.Parse(standing.Points, CultureInfo.InvariantCulture),
+            int.Parse(standing.Wins, CultureInfo.InvariantCulture),
+            standing.Driver.Nationality ?? string.Empty);
 
     private static ConstructorStanding ToConstructorStanding(ErgastConstructorStandingDto standing) =>
         new(
             int.Parse(standing.Position, CultureInfo.InvariantCulture),
             standing.Constructor.Name,
-            decimal.Parse(standing.Points, CultureInfo.InvariantCulture));
+            decimal.Parse(standing.Points, CultureInfo.InvariantCulture),
+            int.Parse(standing.Wins, CultureInfo.InvariantCulture),
+            standing.Constructor.Nationality ?? string.Empty);
 }

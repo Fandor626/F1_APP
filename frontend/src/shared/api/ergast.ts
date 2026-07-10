@@ -22,6 +22,8 @@ const DriverStandingSchema = z.object({
   driverName: z.string(),
   constructorName: z.string(),
   points: z.number(),
+  wins: z.number(),
+  nationality: z.string(),
 })
 
 const DriverStandingsSchema = z.array(DriverStandingSchema)
@@ -32,6 +34,8 @@ const ConstructorStandingSchema = z.object({
   position: z.number(),
   constructorName: z.string(),
   points: z.number(),
+  wins: z.number(),
+  nationality: z.string(),
 })
 
 const ConstructorStandingsSchema = z.array(ConstructorStandingSchema)

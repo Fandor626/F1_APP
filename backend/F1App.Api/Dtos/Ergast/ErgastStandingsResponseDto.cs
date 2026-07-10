@@ -25,7 +25,8 @@ public record ErgastDriverDto(
     [property: JsonPropertyName("driverId")] string DriverId,
     [property: JsonPropertyName("givenName")] string GivenName,
     [property: JsonPropertyName("familyName")] string FamilyName,
-    [property: JsonPropertyName("code")] string? Code = null);
+    [property: JsonPropertyName("code")] string? Code = null,
+    [property: JsonPropertyName("nationality")] string? Nationality = null);
 
 public record ErgastConstructorStandingsResponseDto(
     [property: JsonPropertyName("MRData")] ErgastConstructorStandingsMrDataDto MRData);
@@ -47,4 +48,5 @@ public record ErgastConstructorStandingDto(
 
 public record ErgastConstructorDto(
     [property: JsonPropertyName("constructorId")] string ConstructorId,
-    [property: JsonPropertyName("name")] string Name);
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("nationality")] string? Nationality = null);

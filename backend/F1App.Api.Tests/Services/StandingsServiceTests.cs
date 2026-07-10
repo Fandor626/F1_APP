@@ -8,11 +8,11 @@ namespace F1App.Api.Tests.Services;
 
 public class StandingsServiceTests
 {
-    private static ErgastDriverStandingDto DriverStanding(string position, string familyName, string points, string constructorName = "Mercedes") =>
-        new(position, points, "0", new ErgastDriverDto("id", "Given", familyName), [new ErgastConstructorDto("id", constructorName)]);
+    private static ErgastDriverStandingDto DriverStanding(string position, string familyName, string points, string constructorName = "Mercedes", string wins = "0", string nationality = "Italian") =>
+        new(position, points, wins, new ErgastDriverDto("id", "Given", familyName, Nationality: nationality), [new ErgastConstructorDto("id", constructorName)]);
 
-    private static ErgastConstructorStandingDto ConstructorStanding(string position, string name, string points) =>
-        new(position, points, "0", new ErgastConstructorDto("id", name));
+    private static ErgastConstructorStandingDto ConstructorStanding(string position, string name, string points, string wins = "0", string nationality = "German") =>
+        new(position, points, wins, new ErgastConstructorDto("id", name, nationality));
 
     [Fact]
     public async Task GetCurrentDriverStandingsAsync_MapsPositionNameConstructorAndPoints()
@@ -20,7 +20,7 @@ public class StandingsServiceTests
         var ergastClient = new Mock<IErgastClient>();
         ergastClient
             .Setup(c => c.GetCurrentDriverStandingsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([DriverStanding("1", "Antonelli", "156", "Mercedes")]);
+            .ReturnsAsync([DriverStanding("1", "Antonelli", "156", "Mercedes", "5", "Italian")]);
 
         var service = new StandingsService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()));
 
@@ -32,6 +32,8 @@ public class StandingsServiceTests
         Assert.Equal("Given Antonelli", standing.FullName);
         Assert.Equal("Mercedes", standing.ConstructorName);
         Assert.Equal(156, standing.Points);
+        Assert.Equal(5, standing.Wins);
+        Assert.Equal("Italian", standing.Nationality);
     }
 
     [Fact]
@@ -56,7 +58,7 @@ public class StandingsServiceTests
         var ergastClient = new Mock<IErgastClient>();
         ergastClient
             .Setup(c => c.GetCurrentConstructorStandingsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([ConstructorStanding("1", "Mercedes", "262")]);
+            .ReturnsAsync([ConstructorStanding("1", "Mercedes", "262", "6", "German")]);
 
         var service = new StandingsService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()));
 
@@ -66,6 +68,8 @@ public class StandingsServiceTests
         Assert.Equal(1, standing.Position);
         Assert.Equal("Mercedes", standing.ConstructorName);
         Assert.Equal(262, standing.Points);
+        Assert.Equal(6, standing.Wins);
+        Assert.Equal("German", standing.Nationality);
     }
 
     [Fact]

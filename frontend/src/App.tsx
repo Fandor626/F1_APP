@@ -16,6 +16,12 @@ function App() {
         >
           Live Race
         </Link>
+        <Link
+          to="/standings"
+          className="text-[#eef0f3] text-sm font-semibold hover:text-[#d8b65c]"
+        >
+          Standings
+        </Link>
       </nav>
       <Outlet />
     </>

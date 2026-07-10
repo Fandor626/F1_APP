@@ -1,0 +1,1 @@
+export { StandingsPage } from './StandingsPage'
