@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fan Card (Phase 2) — F1_poc</title>
+<style>
+/*
+  Illustrates (Phase 2, ux-F1_poc-2026-07-11):
+  - .memlog.md: "Fan Card v2: trading-card portrait orientation/aspect ratio,
+    autograph styled as genuine handwritten signature (visual intent,
+    independent of technical realization), multiple cards shown as a grid
+    (not carousel)"
+  - .memlog.md: "Standings Fan Card prompt: modal (reuses existing
+    one-level-deep overlay pattern), launches straight into the existing
+    3-step wizard rather than a separate lightweight picker"
+  - Phase-2 PRD FR-11 (driver photo, autograph, team logo, team-principal name
+    added to the card), FR-12 (multiple cards per user, all viewable from this
+    page), FR-10 (Standings-page creation prompt for users with no card yet)
+  - Inherited from phase-1 DESIGN.md: card/rounded.lg/border-soft base, flat
+    elevation, restrained constructor-color use (dot/thin rule/badge only —
+    NOT a full-bleed team-color card background, per Do's and Don'ts), gold
+    accent-editorial reserved for the product's own voice, bg-inset well
+    treatment for recessed photo panel
+  - Inherited from phase-1 EXPERIENCE.md: Fan Card wizard is re-enterable at
+    any time; modal stacks never exceed one level; plain fan-to-fan voice
+  - Addendum.md FR-11 open item (driver photo/autograph/team-logo sourcing
+    unresolved) — this mockup deliberately uses placeholder treatments
+    (silhouette + car number, monogram team badge, script-font signature)
+    rather than implying real licensed assets exist yet. FLAGGED AS A GAP in
+    return summary.
+*/
+:root{
+  --bg-app:#14171c;
+  --bg-card:#1b1f26;
+  --bg-card-hover:#20242c;
+  --bg-inset:#11141a;
+  --border-soft:#2a2f38;
+  --text-primary:#eef0f3;
+  --text-secondary:#9aa1ad;
+  --text-tertiary:#6b7280;
+  --text-dim:#4b5160;
+  --accent-editorial:#d8b65c;
+  --team-redbull:#2741a6;
+  --team-ferrari:#ef1a2d;
+  --team-mercedes:#1fd6c1;
+  --team-mclaren:#ff8a1e;
+  --radius-sm:6px;
+  --radius-md:12px;
+  --radius-lg:14px;
+  --radius-full:9999px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;background:#0c0e11;}
+body{
+  font-family:"Avenir Next","Segoe UI",ui-sans-serif,system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--text-primary);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:24px 12px 60px;
+}
+.note{
+  max-width:1320px;width:100%;font-size:12.5px;color:var(--text-secondary);
+  border:1px solid var(--border-soft);border-radius:10px;padding:10px 16px;
+  background:var(--bg-card);margin-bottom:16px;
+}
+.note b{color:var(--accent-editorial);}
+
+.browser-frame{width:1320px;max-width:100%;background:var(--bg-card);border:1px solid var(--border-soft);border-radius:14px;overflow:hidden;}
+.browser-chrome{height:38px;background:#191d24;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:8px;padding:0 14px;}
+.dot{width:10px;height:10px;border-radius:50%;}
+.dot.r{background:#ff5f56;} .dot.y{background:#ffbd2e;} .dot.g{background:#27c93f;}
+.url-bar{margin-left:14px;background:#11141a;border:1px solid var(--border-soft);border-radius:7px;color:var(--text-tertiary);font-size:12px;padding:5px 12px;flex:1;max-width:440px;}
+.app-shell{background:var(--bg-app);}
+
+/* ---------- nav-topbar (unchanged from phase-1/other phase-2 mocks) ---------- */
+.nav-topbar{height:56px;background:var(--bg-card);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;padding:0 28px;}
+.nav-left{display:flex;align-items:center;gap:32px;}
+.nav-brand{font-size:15px;font-weight:700;letter-spacing:-0.01em;}
+.nav-brand span{color:var(--accent-editorial);}
+.nav-links{display:flex;align-items:center;gap:22px;list-style:none;margin:0;padding:0;}
+.nav-links a{color:var(--text-secondary);text-decoration:none;font-size:13px;padding:4px 2px;border-bottom:1px solid transparent;}
+.nav-links a.active{color:var(--text-primary);font-weight:600;border-bottom-color:var(--accent-editorial);}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.streak-badge{display:inline-flex;align-items:center;gap:6px;background:var(--bg-inset);border:1px solid var(--border-soft);border-radius:var(--radius-full);padding:5px 12px;font-size:11.5px;font-weight:600;letter-spacing:0.04em;color:var(--text-secondary);}
+.streak-badge b{color:var(--accent-editorial);font-weight:700;}
+.fancard-link{font-size:13px;text-decoration:none;border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:6px 14px;}
+.fancard-link.active{color:var(--accent-editorial);border-color:var(--accent-editorial);}
+
+/* ---------- page shell ---------- */
+.page{max-width:1264px;margin:0 auto;padding:28px 28px 56px;}
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:26px;gap:20px;flex-wrap:wrap;}
+h1.page-title{font-size:26px;font-weight:700;line-height:1.2;letter-spacing:-0.01em;margin:0 0 4px;}
+.page-sub{font-size:13px;color:var(--text-secondary);margin:0;}
+.btn{appearance:none;font-family:inherit;font-size:13px;font-weight:600;border-radius:var(--radius-md);padding:9px 18px;cursor:pointer;}
+.btn-primary{background:var(--accent-editorial);border:1px solid var(--accent-editorial);color:#241c10;}
+.btn-primary:hover{opacity:0.9;}
+
+/* ---------- Fan Card grid (multiple cards, grid not carousel, per memlog) ---------- */
+.fancard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(226px,1fr));gap:22px;max-width:920px;}
+
+/* ---------- trading-card: portrait orientation, ~5:7 aspect (per memlog) ---------- */
+.trading-card{
+  aspect-ratio:5/7;
+  background:var(--bg-card);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-lg);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+/* restrained team-color rule at the top edge — a thin strip, NOT a full-bleed
+   team-color card background (DESIGN.md Do's and Don'ts is explicit on this) */
+.tc-team-rule{height:4px;flex-shrink:0;}
+
+/* photo panel: bg-inset well (same recessed treatment as the calendar's
+   track-outline panel and Live Race's track map), silhouette placeholder —
+   no real driver photo asset exists yet per addendum.md FR-11 */
+.tc-photo{
+  flex:1;
+  background:var(--bg-inset);
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.tc-photo .car-number{
+  position:absolute;
+  font-size:118px;
+  font-weight:700;
+  color:var(--text-dim);
+  opacity:0.5;
+  right:-6px;
+  bottom:-22px;
+  line-height:1;
+  letter-spacing:-0.04em;
+}
+.tc-photo svg{width:64px;height:64px;color:var(--text-tertiary);position:relative;z-index:1;}
+.tc-favorite-pin{
+  position:absolute;top:10px;left:10px;
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(17,20,26,0.82);border:1px solid var(--accent-editorial);color:var(--accent-editorial);
+  border-radius:var(--radius-full);padding:3px 9px;font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
+}
+
+.tc-info{padding:14px 15px 16px;border-top:1px solid var(--border-soft);}
+.tc-driver-name{font-size:15px;font-weight:700;letter-spacing:-0.01em;margin-bottom:8px;}
+.tc-team-row{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+.tc-team-badge{
+  width:18px;height:18px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;color:#0c0e11;
+}
+.tc-team-name{font-size:12px;color:var(--text-secondary);font-weight:600;}
+.tc-principal{font-size:11px;color:var(--text-tertiary);margin-bottom:12px;}
+.tc-principal b{color:var(--text-secondary);font-weight:600;}
+
+/* autograph: script-font rendering is the technical realization of memlog's
+   "visual intent" (a genuine handwritten signature), not a scanned asset */
+.tc-autograph{
+  font-family:"Segoe Script","Bradley Hand","Brush Script MT",cursive;
+  font-size:22px;
+  color:var(--text-primary);
+  line-height:1;
+  border-top:1px dashed var(--border-soft);
+  padding-top:10px;
+  transform:rotate(-1.5deg);
+}
+
+/* ---------- add-new-card tile ---------- */
+.tc-add{
+  aspect-ratio:5/7;
+  border:1.5px dashed var(--border-soft);
+  border-radius:var(--radius-lg);
+  background:transparent;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  color:var(--text-tertiary);
+  cursor:pointer;
+  font-family:inherit;
+  width:100%;
+}
+.tc-add:hover{border-color:var(--accent-editorial);color:var(--accent-editorial);background:var(--bg-card-hover);}
+.tc-add .plus{width:34px;height:34px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.tc-add .label{font-size:12.5px;font-weight:600;}
+
+/* ---------- secondary illustration: Standings-page discovery prompt (FR-10) ---------- */
+.secondary-illustration{margin-top:44px;max-width:1264px;}
+.secondary-caption{font-size:12.5px;color:var(--text-secondary);margin-bottom:16px;max-width:760px;}
+.secondary-caption b{color:var(--text-primary);}
+.standings-snippet-wrap{position:relative;width:640px;max-width:100%;}
+.standings-snippet{
+  background:var(--bg-card);border:1px solid var(--border-soft);border-radius:var(--radius-lg);
+  padding:18px 22px;filter:blur(0.3px);
+}
+.standings-snippet-title{font-size:15px;font-weight:700;margin-bottom:12px;}
+table.mini-standings{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.mini-standings th{text-align:left;font-size:10.5px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;padding:5px 8px;border-bottom:1px solid var(--border-soft);}
+table.mini-standings td{padding:6px 8px;border-bottom:1px solid #20242c;}
+
+.prompt-scrim{
+  position:absolute;inset:0;background:rgba(10,12,15,0.6);
+  border-radius:var(--radius-lg);
+  display:flex;align-items:center;justify-content:center;
+}
+.prompt-modal{
+  width:340px;max-width:88%;
+  background:var(--bg-card);border:1px solid var(--border-soft);border-radius:var(--radius-lg);
+  padding:22px 24px;
+}
+.prompt-modal-title{font-size:16px;font-weight:700;margin-bottom:6px;}
+.prompt-modal-body{font-size:12.5px;color:var(--text-secondary);margin-bottom:18px;line-height:1.5;}
+.prompt-actions{display:flex;justify-content:flex-end;gap:10px;}
+.btn-dismiss{appearance:none;font-family:inherit;background:transparent;border:1px solid var(--border-soft);color:var(--text-secondary);border-radius:var(--radius-md);padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;}
+.btn-dismiss:hover{color:var(--text-primary);border-color:var(--text-secondary);}
+</style>
+</head>
+<body>
+
+<div class="note"><b>Gaps filled conservatively:</b> driver photo, autograph, and team-logo sourcing are unresolved per <code>addendum.md</code> FR-11 (Open Question 4) — this mockup deliberately shows placeholder treatments (silhouette icon + oversized car number on a <code>bg-inset</code> well, a colored monogram badge instead of a licensed team logo, a CSS script-font signature) rather than implying real licensed assets already exist. The trading-card component itself is new (not in phase-1 <code>DESIGN.md</code>); it's built from existing tokens (<code>bg-card</code>, <code>border-soft</code>, <code>rounded.lg</code>) at a portrait ~5:7 aspect ratio per the memlog decision, and keeps constructor color to a thin top rule + small badge — never a full-bleed team-color card background, per the inherited Do's/Don'ts.</div>
+
+<div class="browser-frame">
+  <div class="browser-chrome">
+    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+    <div class="url-bar">f1poc.app/fancard</div>
+  </div>
+  <div class="app-shell">
+
+    <nav class="nav-topbar">
+      <div class="nav-left">
+        <div class="nav-brand">F1<span>_poc</span></div>
+        <ul class="nav-links">
+          <li><a href="#">Calendar</a></li>
+          <li><a href="#">Live Race</a></li>
+          <li><a href="#">Standings</a></li>
+          <li><a href="#">Profiles</a></li>
+          <li><a href="#">News Feed</a></li>
+        </ul>
+      </div>
+      <div class="nav-right">
+        <span class="streak-badge">Streak <b>8</b></span>
+        <a href="#" class="fancard-link active">Fan Card</a>
+      </div>
+    </nav>
+
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Your Fan Cards</h1>
+          <p class="page-sub">Stored in this browser, no account needed. Make as many as you like.</p>
+        </div>
+        <button class="btn btn-primary">+ New Fan Card</button>
+      </div>
+
+      <div class="fancard-grid">
+
+        <!-- Fan Card 1: Norris / McLaren -->
+        <div class="trading-card">
+          <div class="tc-team-rule" style="background:var(--team-mclaren)"></div>
+          <div class="tc-photo">
+            <span class="tc-favorite-pin">★ Primary</span>
+            <span class="car-number">4</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          </div>
+          <div class="tc-info">
+            <div class="tc-driver-name">Lando Norris</div>
+            <div class="tc-team-row">
+              <span class="tc-team-badge" style="background:var(--team-mclaren)">M</span>
+              <span class="tc-team-name">McLaren</span>
+            </div>
+            <div class="tc-principal">Team Principal: <b>Andrea Stella</b></div>
+            <div class="tc-autograph">Lando Norris</div>
+          </div>
+        </div>
+
+        <!-- Fan Card 2: Verstappen / Red Bull -->
+        <div class="trading-card">
+          <div class="tc-team-rule" style="background:var(--team-redbull)"></div>
+          <div class="tc-photo">
+            <span class="car-number">1</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          </div>
+          <div class="tc-info">
+            <div class="tc-driver-name">Max Verstappen</div>
+            <div class="tc-team-row">
+              <span class="tc-team-badge" style="background:var(--team-redbull)">RB</span>
+              <span class="tc-team-name">Red Bull Racing</span>
+            </div>
+            <div class="tc-principal">Team Principal: <b>Christian Horner</b></div>
+            <div class="tc-autograph">Max Verstappen</div>
+          </div>
+        </div>
+
+        <!-- Add another card: multiple cards per user, wizard is re-enterable (FR-12) -->
+        <button class="tc-add" aria-haspopup="dialog">
+          <span class="plus">+</span>
+          <span class="label">New Fan Card</span>
+        </button>
+
+      </div>
+
+      <!-- Secondary illustration: Standings-page discovery prompt (FR-10) -->
+      <div class="secondary-illustration">
+        <div class="secondary-caption"><b>Standings-page discovery prompt (FR-10):</b> shown once to users with zero Fan Cards, per memlog "modal, reuses existing one-level-deep overlay pattern, launches straight into the existing 3-step wizard." Dismissing doesn't block the page; the wizard step-through itself is unchanged from phase-1's <code>key-fancard-wizard.html</code> and isn't re-illustrated here.</div>
+        <div class="standings-snippet-wrap">
+          <div class="standings-snippet">
+            <div class="standings-snippet-title">Drivers' Championship</div>
+            <table class="mini-standings">
+              <thead><tr><th>Pos</th><th>Driver</th><th>Pts</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>Norris</td><td>312</td></tr>
+                <tr><td>2</td><td>Verstappen</td><td>289</td></tr>
+                <tr><td>3</td><td>Leclerc</td><td>241</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="prompt-scrim">
+            <div class="prompt-modal" role="dialog" aria-modal="true" aria-labelledby="prompt-title">
+              <div class="prompt-modal-title" id="prompt-title">Build your Fan Card</div>
+              <div class="prompt-modal-body">Pick a favorite driver, constructor, and circuit — takes about a minute, and you can change it anytime.</div>
+              <div class="prompt-actions">
+                <button class="btn-dismiss">Not now</button>
+                <button class="btn btn-primary">Get started</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

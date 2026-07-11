@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Race Weekend Detail (Phase 2) — F1_poc</title>
+<style>
+/*
+  Illustrates (Phase 2, ux-F1_poc-2026-07-11):
+  - .memlog.md: "Win Prediction (resolves PRD Open Question 2): plain-language
+    prediction sits above as an accent-editorial callout (new non-team use of
+    the product's own-voice color); the MVP's raw per-grid-slot win-probability
+    table remains accessible below via a toggle, not deleted. Track records
+    get their own section, separate from the track-layout panel"
+  - Phase-2 PRD FR-13 (track layout viz, larger/more detailed than the
+    calendar card), FR-14 (all-time + current-year fastest lap w/ driver
+    names, more prominent than the card-level summary), FR-15 (past winners
+    list + circuit stats: length, corners, DRS zones, first-race year),
+    FR-16 (plain-language Win Prediction, no raw percentages in the primary
+    view)
+  - This surface was "spine-only, no mock" in phase-1 (EXPERIENCE.md IA table)
+    — first visual composition for it, so it newly interprets phase-1
+    Component Patterns "Timezone toggle" (literal two-state switch, gold when
+    active, Local default) and State Patterns "No prior result at this
+    circuit" / "No qualifying yet yet" rather than extending an existing mock
+  - Inherited from phase-1 DESIGN.md: card/card-head/card-title/card-sub
+    pattern (reused verbatim from the Live Race dashboard grid), bg-inset well
+    for recessed panels, flat elevation, accent-editorial reserved for the
+    product's own voice, inline-link treatment for driver/circuit names
+  - Inherited from phase-1 EXPERIENCE.md: Race Weekend Detail IA entry
+    (reached from a Calendar card), Voice and Tone (plain, fan-to-fan,
+    "Provisional" language for the championship delta)
+*/
+:root{
+  --bg-app:#14171c;
+  --bg-card:#1b1f26;
+  --bg-card-hover:#20242c;
+  --bg-inset:#11141a;
+  --border-soft:#2a2f38;
+  --text-primary:#eef0f3;
+  --text-secondary:#9aa1ad;
+  --text-tertiary:#6b7280;
+  --text-dim:#4b5160;
+  --accent-editorial:#d8b65c;
+  --team-redbull:#2741a6;
+  --team-ferrari:#ef1a2d;
+  --team-mercedes:#1fd6c1;
+  --team-mclaren:#ff8a1e;
+  --radius-sm:6px;
+  --radius-md:12px;
+  --radius-lg:14px;
+  --radius-full:9999px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;background:#0c0e11;}
+body{
+  font-family:"Avenir Next","Segoe UI",ui-sans-serif,system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--text-primary);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:24px 12px 60px;
+}
+.note{
+  max-width:1320px;width:100%;font-size:12.5px;color:var(--text-secondary);
+  border:1px solid var(--border-soft);border-radius:10px;padding:10px 16px;
+  background:var(--bg-card);margin-bottom:16px;
+}
+.note b{color:var(--accent-editorial);}
+
+.browser-frame{width:1320px;max-width:100%;background:var(--bg-card);border:1px solid var(--border-soft);border-radius:14px;overflow:hidden;}
+.browser-chrome{height:38px;background:#191d24;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:8px;padding:0 14px;}
+.dot{width:10px;height:10px;border-radius:50%;}
+.dot.r{background:#ff5f56;} .dot.y{background:#ffbd2e;} .dot.g{background:#27c93f;}
+.url-bar{margin-left:14px;background:#11141a;border:1px solid var(--border-soft);border-radius:7px;color:var(--text-tertiary);font-size:12px;padding:5px 12px;flex:1;max-width:440px;}
+.app-shell{background:var(--bg-app);}
+
+/* ---------- nav-topbar (unchanged) ---------- */
+.nav-topbar{height:56px;background:var(--bg-card);border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between;padding:0 28px;}
+.nav-left{display:flex;align-items:center;gap:32px;}
+.nav-brand{font-size:15px;font-weight:700;letter-spacing:-0.01em;}
+.nav-brand span{color:var(--accent-editorial);}
+.nav-links{display:flex;align-items:center;gap:22px;list-style:none;margin:0;padding:0;}
+.nav-links a{color:var(--text-secondary);text-decoration:none;font-size:13px;padding:4px 2px;border-bottom:1px solid transparent;}
+.nav-links a.active{color:var(--text-primary);font-weight:600;border-bottom-color:var(--accent-editorial);}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.streak-badge{display:inline-flex;align-items:center;gap:6px;background:var(--bg-inset);border:1px solid var(--border-soft);border-radius:var(--radius-full);padding:5px 12px;font-size:11.5px;font-weight:600;letter-spacing:0.04em;color:var(--text-secondary);}
+.streak-badge b{color:var(--accent-editorial);font-weight:700;}
+.fancard-link{font-size:13px;color:var(--text-primary);text-decoration:none;border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:6px 14px;}
+
+/* ---------- page shell ---------- */
+.page{max-width:1264px;margin:0 auto;padding:22px 28px 56px;}
+.breadcrumb{font-size:12px;color:var(--text-tertiary);margin-bottom:14px;}
+.breadcrumb a{color:var(--text-secondary);text-decoration:none;}
+.breadcrumb a:hover{color:var(--accent-editorial);}
+
+.masthead{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border-soft);gap:20px;flex-wrap:wrap;}
+.masthead-circuit{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.masthead-flag{font-size:26px;line-height:1;}
+h1.masthead-title{font-size:26px;font-weight:700;letter-spacing:-0.02em;margin:0;}
+.masthead-place{font-size:13px;color:var(--text-tertiary);}
+.masthead-dates{font-size:13px;color:var(--text-secondary);margin-top:6px;}
+
+/* ---------- session card + timezone toggle ---------- */
+.card{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:22px;}
+.card-head{display:flex;align-items:baseline;justify-content:space-between;padding:18px 22px 12px;flex-wrap:wrap;gap:10px;}
+.card-title{font-size:15px;font-weight:700;letter-spacing:-0.01em;}
+.card-sub{font-size:12px;color:var(--text-tertiary);}
+
+/* toggle-switch: literal two-state switch per DESIGN.md Components.toggle-switch */
+.tz-toggle{display:inline-flex;align-items:center;gap:9px;}
+.tz-toggle-label{font-size:12px;color:var(--text-tertiary);font-weight:600;}
+.tz-toggle-label.active{color:var(--text-primary);}
+.tz-switch{
+  position:relative;width:40px;height:22px;border-radius:var(--radius-full);
+  background:var(--accent-editorial);border:1px solid var(--accent-editorial);
+  cursor:pointer;flex-shrink:0;
+}
+.tz-switch .thumb{
+  position:absolute;top:2px;left:20px;width:16px;height:16px;border-radius:50%;
+  background:var(--text-primary);transition:left 0.15s ease;
+}
+
+.session-list{padding:4px 22px 20px;}
+.session-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #20242c;font-size:13px;}
+.session-row:last-child{border-bottom:none;}
+.session-name{color:var(--text-primary);font-weight:600;}
+.session-day{color:var(--text-tertiary);font-size:11.5px;margin-left:8px;font-weight:400;}
+.session-time{color:var(--text-secondary);font-variant-numeric:tabular-nums;}
+.session-time b{color:var(--text-primary);font-weight:700;}
+
+/* ---------- two-column dashboard grid (matches Live Race convention) ---------- */
+.grid{display:grid;grid-template-columns:1.5fr 1fr;gap:22px;}
+.col-stack{display:flex;flex-direction:column;}
+
+/* ---------- track layout panel (large/detailed — FR-13), bg-inset well ---------- */
+.track-layout-wrap{padding:6px 22px 22px;}
+.track-layout{background:var(--bg-inset);border:1px solid var(--border-soft);border-radius:var(--radius-md);height:280px;display:flex;align-items:center;justify-content:center;position:relative;}
+.track-layout svg{width:92%;height:92%;}
+.track-layout-caption{position:absolute;bottom:12px;left:14px;font-size:11px;color:var(--text-tertiary);}
+
+/* ---------- track records section: separate from track-layout panel, per memlog ---------- */
+.records-list{padding:4px 22px 22px;display:flex;flex-direction:column;gap:12px;}
+.record-row{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:10px 14px;background:var(--bg-inset);border-radius:var(--radius-md);}
+.record-label{font-size:12px;color:var(--text-tertiary);}
+.record-value{font-size:15px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+.record-driver{font-size:12px;color:var(--text-secondary);margin-left:8px;font-weight:400;}
+
+/* ---------- circuit stats tiles (FR-15) ---------- */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:4px 22px 22px;}
+.stat-tile{background:var(--bg-inset);border-radius:var(--radius-md);padding:14px 12px;text-align:center;}
+.stat-value{font-size:19px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+.stat-label{font-size:10.5px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.4px;margin-top:4px;}
+
+/* ---------- past winners list (FR-15) ---------- */
+.winners-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:0 22px 20px;width:calc(100% - 44px);}
+.winners-table th{text-align:left;font-size:10.5px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;padding:6px 8px;border-bottom:1px solid var(--border-soft);}
+.winners-table td{padding:7px 8px;border-bottom:1px solid #20242c;}
+.winners-table tr:last-child td{border-bottom:none;}
+.winners-table a{color:var(--text-primary);text-decoration:none;border-bottom:1px solid transparent;}
+.winners-table a:hover{color:var(--accent-editorial);border-bottom-color:var(--accent-editorial);}
+
+/* ---------- Win Prediction callout: plain-language, accent-editorial, sits ABOVE the toggle-revealed raw table ---------- */
+.prediction-card{
+  background:var(--bg-card);
+  border:1px solid var(--accent-editorial);
+  border-radius:var(--radius-lg);
+  padding:20px 22px;
+  margin-bottom:22px;
+}
+.prediction-label{font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent-editorial);margin-bottom:10px;}
+.prediction-text{font-size:15px;line-height:1.5;color:var(--text-primary);margin-bottom:14px;}
+.prediction-text b{color:var(--accent-editorial);}
+.prediction-toggle{
+  appearance:none;background:transparent;border:1px solid var(--border-soft);color:var(--text-secondary);
+  font-family:inherit;font-size:11.5px;font-weight:600;border-radius:var(--radius-md);padding:7px 13px;cursor:pointer;
+}
+.prediction-toggle:hover{border-color:var(--accent-editorial);color:var(--accent-editorial);}
+.prediction-toggle .chev{display:inline-block;margin-left:5px;transition:transform 0.15s ease;}
+.prediction-toggle.expanded .chev{transform:rotate(180deg);}
+
+/* raw grid-slot win-probability table — accessible below via toggle, not deleted (per memlog) */
+.raw-prob-table{margin-top:16px;padding-top:16px;border-top:1px dashed var(--border-soft);}
+.raw-prob-note{font-size:11px;color:var(--text-tertiary);margin-bottom:10px;}
+table.probs{width:100%;border-collapse:collapse;font-size:12px;}
+table.probs th{text-align:left;font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.4px;padding:5px 6px;border-bottom:1px solid var(--border-soft);}
+table.probs td{padding:5px 6px;border-bottom:1px solid #20242c;font-variant-numeric:tabular-nums;}
+table.probs tr:last-child td{border-bottom:none;}
+.prob-bar-wrap{background:#20242c;border-radius:4px;height:6px;width:100px;overflow:hidden;}
+.prob-bar{height:100%;background:var(--accent-editorial);opacity:0.75;}
+
+/* ---------- championship delta card ---------- */
+.delta-card{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:var(--radius-lg);padding:18px 22px;}
+.delta-title{font-size:13px;font-weight:700;margin-bottom:8px;}
+.delta-text{font-size:12.5px;color:var(--text-secondary);line-height:1.6;}
+.delta-text .prov{color:var(--accent-editorial);font-weight:700;font-size:10px;letter-spacing:0.4px;text-transform:uppercase;margin-right:5px;}
+</style>
+</head>
+<body>
+
+<div class="note"><b>Gap filled conservatively:</b> track-outline rendering technique is explicitly out of scope of the PRD (<code>addendum.md</code>) — this mockup uses an illustrative SVG placeholder at the "larger/more detailed" treatment FR-13 calls for (adds a start/finish marker + corner numbering vs. the calendar card's plain outline), not a claim about the final asset source. "First race at this circuit" / "no qualifying yet" empty states from phase-1 EXPERIENCE.md are not re-illustrated here (this mock shows the populated state) but still apply per spine.</div>
+
+<div class="browser-frame">
+  <div class="browser-chrome">
+    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+    <div class="url-bar">f1poc.app/calendar/belgian-grand-prix</div>
+  </div>
+  <div class="app-shell">
+
+    <nav class="nav-topbar">
+      <div class="nav-left">
+        <div class="nav-brand">F1<span>_poc</span></div>
+        <ul class="nav-links">
+          <li><a href="#" class="active">Calendar</a></li>
+          <li><a href="#">Live Race</a></li>
+          <li><a href="#">Standings</a></li>
+          <li><a href="#">Profiles</a></li>
+          <li><a href="#">News Feed</a></li>
+        </ul>
+      </div>
+      <div class="nav-right">
+        <span class="streak-badge">Streak <b>8</b></span>
+        <a href="#" class="fancard-link">Fan Card</a>
+      </div>
+    </nav>
+
+    <div class="page">
+      <div class="breadcrumb"><a href="#">Race Calendar</a> / Belgian Grand Prix</div>
+
+      <div class="masthead">
+        <div>
+          <div class="masthead-circuit">
+            <span class="masthead-flag">🇧🇪</span>
+            <h1 class="masthead-title">Belgian Grand Prix</h1>
+          </div>
+          <div class="masthead-place">Circuit de Spa-Francorchamps</div>
+          <div class="masthead-dates">25–27 Jul 2026 · Round 13 of 24</div>
+        </div>
+      </div>
+
+      <!-- Sessions + timezone toggle (inherited component, first mock) -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Weekend Sessions</div>
+            <div class="card-sub">All times shown in Local by default</div>
+          </div>
+          <div class="tz-toggle" role="group" aria-label="Timezone">
+            <span class="tz-toggle-label">Track</span>
+            <button class="tz-switch" role="switch" aria-checked="true" aria-label="Toggle Track/Local time"><span class="thumb"></span></button>
+            <span class="tz-toggle-label active">Local</span>
+          </div>
+        </div>
+        <div class="session-list">
+          <div class="session-row"><span class="session-name">Practice 1<span class="session-day">Fri</span></span><span class="session-time"><b>13:30</b> Local</span></div>
+          <div class="session-row"><span class="session-name">Practice 2<span class="session-day">Fri</span></span><span class="session-time"><b>17:00</b> Local</span></div>
+          <div class="session-row"><span class="session-name">Practice 3<span class="session-day">Sat</span></span><span class="session-time"><b>12:30</b> Local</span></div>
+          <div class="session-row"><span class="session-name">Qualifying<span class="session-day">Sat</span></span><span class="session-time"><b>16:00</b> Local</span></div>
+          <div class="session-row"><span class="session-name">Race<span class="session-day">Sun</span></span><span class="session-time"><b>15:00</b> Local</span></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="col-stack">
+
+          <!-- Track layout: large/detailed, FR-13 -->
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Track Layout</div>
+                <div class="card-sub">7.004 km, 19 turns</div>
+              </div>
+            </div>
+            <div class="track-layout-wrap">
+              <div class="track-layout">
+                <svg viewBox="85 -5 330 510" fill="none">
+                  <!-- Real Spa-Francorchamps GP layout (spa-francorchamps-4, 2007-present), traced from f1db/f1db (CC-BY-4.0) -->
+                  <path d="M167.75 20.858c-3.075-5.364-.283-7.034 3.387-5.065 3.669 1.97 49.393 30.95 55.603 35.171 6.21 4.22 10.613 8.816 14.395 13.224 6.116 7.128 29.072 34.701 33.87 40.235 2.327 2.682 4.765 5.265 8.892 6.504.742.223 1.542.375 2.398.53 3.105.563 9.733 2.517 14.112 9.848 4.987 8.348 5.552 11.818 4.705 22.04-.49 5.916.164 11.615 2.258 14.631 5.08 7.316 15.721 22.54 22.956 32.545 8.75 12.099 16.935 28.98 20.322 40.235 3.387 11.255 41.49 144.622 43.467 152.5 1.975 7.878 4.009 9.705-5.504 15.334-4.516 2.673-8.435 6.431-6.774 13.787 1.27 5.628 9.744 26.446.846 32.639-2.08 1.447-48.41 32.702-57.014 38.265-5.222 3.377-12.385.885-15.242-4.08-2.856-4.964-3.503-11.631 4.093-15.897 5.927-3.329 9.314-5.205 25.685-14.96 3.995-2.38 6.181-7.751 3.198-14.442-2.634-5.909-7.55-20.755-9.972-27.574-5.645-15.897-10.43-48.422-14.254-69.216-1.552-8.44-7.338-16.882-19.193-18.007-2.61-.248-11.29-.844-18.77-.563-7.303.275-20.816 4.787-27.66 22.79-5.08 13.366-15.524 40.095-23.992 62.464-6.59 17.407-22.297 12.661-24.696 10.832-5.53-4.215-19.68-14.49-31.19 1.688-5.503 7.738-16.934 26.59-23.567 36.86-7.403 11.462-15.806 3.657-38.81-13.506-9.759-7.282-7.215-21.806-5.786-27.293 6.586-25.285 18.77-40.094 31.189-50.786s29.919-23.353 50.805-30.669c20.887-7.315 27.2-13.496 33.023-24.197 16.23-29.825 24.133-42.908 22.44-57.54-1.694-14.63-19.053-43.752-22.722-56.413-2.69-9.285-4.774-32.872-5.249-52.615-.083-3.47-.676-7.138 6.096-6.19 10.725 1.5 7.765-7.127 6.21-9.379-7.904-11.442-11.323-16.99-17.782-28.324-7.057-12.38-39.515-71.467-41.773-75.406z"
+                    stroke="#3a4150" stroke-width="10" stroke-linejoin="round"/>
+                  <line x1="180" y1="15" x2="160" y2="28" stroke="var(--accent-editorial)" stroke-width="4"/>
+                  <circle cx="167.8" cy="20.9" r="4" fill="#6b7280"/><text x="140" y="14" font-size="9" fill="#6b7280">T1 La Source</text>
+                  <circle cx="275" cy="104.4" r="4" fill="#6b7280"/><text x="281" y="100" font-size="9" fill="#6b7280">T5 Eau Rouge</text>
+                  <circle cx="111.3" cy="439.7" r="4" fill="#6b7280"/><text x="90" y="460" font-size="9" fill="#6b7280">T18 Bus Stop</text>
+                </svg>
+                <div class="track-layout-caption">Start/finish line marked in gold</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Track records: separate section from track-layout panel, per memlog decision -->
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Track Records</div>
+                <div class="card-sub">Circuit de Spa-Francorchamps</div>
+              </div>
+            </div>
+            <div class="records-list">
+              <div class="record-row">
+                <span class="record-label">All-time fastest lap</span>
+                <span><span class="record-value">1:46.286</span><span class="record-driver">Valtteri Bottas · 2018</span></span>
+              </div>
+              <div class="record-row">
+                <span class="record-label">2026 fastest lap</span>
+                <span><span class="record-value">1:48.012</span><span class="record-driver">Charles Leclerc</span></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Circuit stats + past winners: FR-15 -->
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Circuit History</div>
+                <div class="card-sub">Stats and past winners</div>
+              </div>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-tile"><div class="stat-value">7.004 km</div><div class="stat-label">Length</div></div>
+              <div class="stat-tile"><div class="stat-value">19</div><div class="stat-label">Corners</div></div>
+              <div class="stat-tile"><div class="stat-value">2</div><div class="stat-label">DRS zones</div></div>
+              <div class="stat-tile"><div class="stat-value">1950</div><div class="stat-label">First F1 race</div></div>
+            </div>
+            <table class="winners-table">
+              <thead><tr><th>Year</th><th>Driver</th><th>Team</th></tr></thead>
+              <tbody>
+                <tr><td>2025</td><td><a href="#">Max Verstappen</a></td><td>Red Bull Racing</td></tr>
+                <tr><td>2024</td><td><a href="#">Lewis Hamilton</a></td><td>Mercedes</td></tr>
+                <tr><td>2023</td><td><a href="#">Max Verstappen</a></td><td>Red Bull Racing</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+        <div class="col-stack">
+
+          <!-- Win Prediction: plain-language callout above, raw table toggle below, per memlog -->
+          <div class="prediction-card">
+            <div class="prediction-label">Win Prediction</div>
+            <p class="prediction-text">Most likely to win: <b>Max Verstappen</b>. He starts from pole here two of the last three years, and Red Bull's long-run pace at Spa's high-speed sectors has topped every practice session so far this weekend.</p>
+            <button class="prediction-toggle" aria-expanded="false" aria-controls="raw-probs">See grid-by-grid win probability <span class="chev">▾</span></button>
+
+            <div class="raw-prob-table" id="raw-probs">
+              <div class="raw-prob-note">MVP's original per-grid-slot table — kept, not deleted, behind this toggle.</div>
+              <table class="probs">
+                <thead><tr><th>Grid</th><th>Driver</th><th>Win %</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td>P1</td><td>Verstappen</td><td>38%</td><td><div class="prob-bar-wrap"><div class="prob-bar" style="width:76%"></div></div></td></tr>
+                  <tr><td>P2</td><td>Norris</td><td>24%</td><td><div class="prob-bar-wrap"><div class="prob-bar" style="width:48%"></div></div></td></tr>
+                  <tr><td>P3</td><td>Leclerc</td><td>16%</td><td><div class="prob-bar-wrap"><div class="prob-bar" style="width:32%"></div></div></td></tr>
+                  <tr><td>P4</td><td>Piastri</td><td>11%</td><td><div class="prob-bar-wrap"><div class="prob-bar" style="width:22%"></div></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Championship delta -->
+          <div class="delta-card">
+            <div class="delta-title">Championship Impact</div>
+            <div class="delta-text"><span class="prov">Provisional</span>Norris leads Verstappen by 23 points. A Verstappen win with Norris finishing outside the top 3 would cut that gap to single digits — recalculated once qualifying sets the grid.</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

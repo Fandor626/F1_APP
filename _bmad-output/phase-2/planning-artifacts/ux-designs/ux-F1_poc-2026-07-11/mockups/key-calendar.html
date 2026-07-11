@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Race Calendar (Phase 2) — F1_poc</title>
+<style>
+/*
+  Illustrates (Phase 2, ux-F1_poc-2026-07-11):
+  - .memlog.md: "Championship Sidebar: left rail on desktop, uses bg-inset well
+    treatment (recessed, distinct from card content, matches existing chart/map
+    container pattern), collapses to a drawer on mobile"
+  - .memlog.md: "Race Weekend card redesign: track outline as a distinct
+    left-side panel (text on right), fastest-lap shown as two explicit labeled
+    lines (all-time + current year, each with driver name), card grows taller
+    only (same width, more content stacked)"
+  - Phase-2 PRD FR-1 (upcoming-focused default view) / FR-2 (Future/Past/All
+    filter) — visual treatment not specified in memlog, so the filter control
+    conservatively reuses the existing DESIGN.md `tab-toggle` component rather
+    than inventing a new one. FLAGGED AS A GAP in return summary.
+  - Phase-2 PRD FR-3 (persistent Championship Sidebar, same data as Standings)
+  - Inherited from phase-1 DESIGN.md: Colors, Typography, Spacing, rounded.lg
+    cards, flat/no-shadow elevation, nav-topbar, weekend-card (extends card,
+    accent-editorial pinned border), live-badge, inline-link
+  - Inherited from phase-1 EXPERIENCE.md: Race Weekend card behavioral rules
+    (whole card clickable, next weekend pinned), Voice and Tone (plain,
+    fan-to-fan, no emoji/hype)
+*/
+:root{
+  --bg-app:#14171c;
+  --bg-card:#1b1f26;
+  --bg-card-hover:#20242c;
+  --bg-inset:#11141a;
+  --border-soft:#2a2f38;
+  --text-primary:#eef0f3;
+  --text-secondary:#9aa1ad;
+  --text-tertiary:#6b7280;
+  --text-dim:#4b5160;
+  --accent-editorial:#d8b65c;
+  --team-redbull:#2741a6;
+  --team-ferrari:#ef1a2d;
+  --team-mercedes:#1fd6c1;
+  --team-mclaren:#ff8a1e;
+  --radius-sm:6px;
+  --radius-md:12px;
+  --radius-lg:14px;
+  --radius-full:9999px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;background:#0c0e11;}
+body{
+  font-family:"Avenir Next","Segoe UI",ui-sans-serif,system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--text-primary);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:24px 12px 60px;
+}
+.note{
+  max-width:1320px;
+  width:100%;
+  font-size:12.5px;
+  color:var(--text-secondary);
+  border:1px solid var(--border-soft);
+  border-radius:10px;
+  padding:10px 16px;
+  background:var(--bg-card);
+  margin-bottom:16px;
+}
+.note b{color:var(--accent-editorial);}
+
+/* ---------- browser frame ---------- */
+.browser-frame{
+  width:1320px;
+  max-width:100%;
+  background:var(--bg-card);
+  border:1px solid var(--border-soft);
+  border-radius:14px;
+  overflow:hidden;
+}
+.browser-chrome{
+  height:38px;
+  background:#191d24;
+  border-bottom:1px solid var(--border-soft);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 14px;
+}
+.dot{width:10px;height:10px;border-radius:50%;}
+.dot.r{background:#ff5f56;} .dot.y{background:#ffbd2e;} .dot.g{background:#27c93f;}
+.url-bar{
+  margin-left:14px;
+  background:#11141a;
+  border:1px solid var(--border-soft);
+  border-radius:7px;
+  color:var(--text-tertiary);
+  font-size:12px;
+  padding:5px 12px;
+  flex:1;
+  max-width:440px;
+}
+.app-shell{background:var(--bg-app);}
+
+/* ---------- nav-topbar ---------- */
+.nav-topbar{
+  height:56px;
+  background:var(--bg-card);
+  border-bottom:1px solid var(--border-soft);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 28px;
+}
+.nav-left{display:flex;align-items:center;gap:32px;}
+.nav-brand{font-size:15px;font-weight:700;letter-spacing:-0.01em;}
+.nav-brand span{color:var(--accent-editorial);}
+.nav-links{display:flex;align-items:center;gap:22px;list-style:none;margin:0;padding:0;}
+.nav-links a{color:var(--text-secondary);text-decoration:none;font-size:13px;padding:4px 2px;border-bottom:1px solid transparent;}
+.nav-links a.active{color:var(--text-primary);font-weight:600;border-bottom-color:var(--accent-editorial);}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.streak-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--bg-inset);border:1px solid var(--border-soft);
+  border-radius:var(--radius-full);padding:5px 12px;
+  font-size:11.5px;font-weight:600;letter-spacing:0.04em;color:var(--text-secondary);
+}
+.streak-badge b{color:var(--accent-editorial);font-weight:700;}
+.fancard-link{font-size:13px;color:var(--text-primary);text-decoration:none;border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:6px 14px;}
+
+/* ---------- page shell ---------- */
+.page{max-width:1264px;margin:0 auto;padding:28px 28px 56px;}
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;gap:20px;flex-wrap:wrap;}
+h1.page-title{font-size:26px;font-weight:700;line-height:1.2;letter-spacing:-0.01em;margin:0 0 4px;}
+.page-sub{font-size:13px;color:var(--text-secondary);margin:0;}
+
+/* tab-toggle (reused for Future/Past/All filter, FR-2) */
+.tab-toggle{
+  display:inline-flex;
+  background:var(--bg-card);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-md);
+  padding:3px;
+  gap:2px;
+}
+.tab-toggle button{
+  appearance:none;border:none;background:transparent;font-family:inherit;
+  font-size:12.5px;font-weight:600;color:var(--text-secondary);
+  padding:7px 16px;border-radius:9px;cursor:pointer;
+}
+.tab-toggle button.active{background:var(--bg-card-hover);color:var(--text-primary);}
+
+/* ---------- layout: sidebar + main ---------- */
+.layout{display:grid;grid-template-columns:250px 1fr;gap:24px;align-items:start;}
+
+/* ---------- Championship Sidebar: bg-inset well, NOT a card ---------- */
+.sidebar{
+  position:sticky;
+  top:20px;
+  background:var(--bg-inset);
+  border-radius:var(--radius-lg);
+  padding:20px 18px;
+  /* deliberately no border-soft hairline and no card background —
+     this is the recessed well treatment, distinct from card content,
+     matching the chart/map container pattern per memlog */
+}
+.sidebar-title{font-size:11.5px;font-weight:600;letter-spacing:0.04em;color:var(--text-tertiary);text-transform:uppercase;margin:0 0 14px;}
+.standings-group{margin-bottom:20px;}
+.standings-group:last-child{margin-bottom:0;}
+.standings-group-label{font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:10px;}
+.standing-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:12.5px;}
+.standing-left{display:flex;align-items:center;gap:8px;min-width:0;}
+.standing-pos{color:var(--text-tertiary);font-size:11.5px;width:14px;flex-shrink:0;}
+.team-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.standing-name{color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.standing-pts{color:var(--text-secondary);font-size:12px;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.sidebar-footer{margin-top:18px;padding-top:14px;border-top:1px solid #23272f;font-size:11.5px;color:var(--text-tertiary);}
+.sidebar-footer a{color:var(--text-secondary);text-decoration:none;border-bottom:1px solid transparent;}
+.sidebar-footer a:hover{color:var(--accent-editorial);border-bottom-color:var(--accent-editorial);}
+
+/* ---------- weekend-card v2 (extends card; taller, same width) ---------- */
+.section-label{font-size:11.5px;font-weight:600;letter-spacing:0.04em;color:var(--text-tertiary);text-transform:uppercase;margin:0 0 12px;}
+.weekend-list{display:flex;flex-direction:column;gap:16px;margin-bottom:8px;}
+.weekend-card{
+  display:flex;
+  gap:20px;
+  background:var(--bg-card);
+  border:1px solid var(--border-soft);
+  border-radius:var(--radius-lg);
+  padding:18px 22px;
+  text-decoration:none;
+  color:var(--text-primary);
+  cursor:pointer;
+}
+.weekend-card.pinned{border-color:var(--accent-editorial);}
+
+/* track outline as a distinct left-side panel within the card */
+.track-outline-panel{
+  flex:0 0 168px;
+  background:var(--bg-inset);
+  border-radius:var(--radius-md);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:12px 8px 10px;
+}
+.track-outline-panel svg{width:100%;height:92px;}
+.track-outline-label{font-size:10.5px;color:var(--text-tertiary);letter-spacing:0.03em;margin-top:4px;text-align:center;}
+
+.weekend-body{flex:1;min-width:0;display:flex;flex-direction:column;}
+.weekend-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px;}
+.weekend-circuit{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.weekend-flag{font-size:20px;line-height:1;}
+.weekend-name{font-size:15px;font-weight:700;letter-spacing:-0.01em;}
+.weekend-country{font-size:12px;color:var(--text-tertiary);margin-left:2px;}
+.weekend-dates{text-align:right;font-size:12px;color:var(--text-secondary);line-height:1.5;flex-shrink:0;}
+.weekend-dates .race-time{color:var(--text-primary);font-weight:600;font-size:13px;}
+.live-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  border:1px solid var(--accent-editorial);color:var(--accent-editorial);
+  background:transparent;border-radius:var(--radius-full);padding:3px 11px;
+  font-size:11px;font-weight:600;letter-spacing:0.04em;
+}
+.live-badge .pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-editorial);animation:pulse 1.8s ease-in-out infinite;}
+@media (prefers-reduced-motion: reduce){.live-badge .pulse-dot{animation:none;}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+
+/* two explicit labeled fastest-lap lines */
+.fastest-laps{margin-top:auto;padding-top:14px;border-top:1px solid var(--border-soft);display:flex;flex-direction:column;gap:7px;}
+.fastest-lap-row{display:flex;align-items:baseline;justify-content:space-between;font-size:12.5px;gap:12px;}
+.fl-label{color:var(--text-tertiary);font-size:11.5px;letter-spacing:0.02em;flex-shrink:0;}
+.fl-value{color:var(--text-primary);font-weight:600;font-variant-numeric:tabular-nums;}
+.fl-driver{color:var(--text-secondary);font-weight:400;margin-left:6px;}
+
+/* ---------- mobile illustration (secondary) ---------- */
+.mobile-illustration{margin-top:36px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;}
+.mobile-illustration-caption{max-width:280px;font-size:12.5px;color:var(--text-secondary);padding-top:8px;}
+.mobile-illustration-caption b{color:var(--text-primary);}
+.phone-frame{
+  width:220px;
+  background:var(--bg-card);
+  border:1px solid var(--border-soft);
+  border-radius:22px;
+  padding:10px;
+}
+.phone-screen{background:var(--bg-app);border-radius:14px;padding:12px;}
+.phone-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.hamburger{width:20px;height:14px;position:relative;}
+.hamburger span{display:block;height:2px;background:var(--text-secondary);border-radius:2px;margin-bottom:4px;}
+.phone-drawer-tab{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg-inset);border-radius:var(--radius-md);
+  padding:9px 12px;margin-bottom:10px;font-size:11px;color:var(--text-secondary);
+}
+.phone-drawer-tab b{color:var(--text-primary);font-weight:600;}
+.chevron{color:var(--text-tertiary);font-size:10px;}
+.phone-card{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:10px;font-size:10.5px;color:var(--text-secondary);}
+.phone-card b{display:block;color:var(--text-primary);font-size:12px;margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<div class="note"><b>Gap filled conservatively:</b> the Future/Past/All filter control (PRD FR-2) has no visual spec in the memlog, so it reuses the existing DESIGN.md <code>tab-toggle</code> component rather than a new pattern. The Championship Sidebar's third slot (PRD Open Question 5, "maybe something else") is left as a two-item sidebar (Drivers + Constructors only) since no decision was recorded.</div>
+
+<div class="browser-frame">
+  <div class="browser-chrome">
+    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+    <div class="url-bar">f1poc.app/calendar</div>
+  </div>
+  <div class="app-shell">
+
+    <nav class="nav-topbar">
+      <div class="nav-left">
+        <div class="nav-brand">F1<span>_poc</span></div>
+        <ul class="nav-links">
+          <li><a href="#" class="active">Calendar</a></li>
+          <li><a href="#">Live Race</a></li>
+          <li><a href="#">Standings</a></li>
+          <li><a href="#">Profiles</a></li>
+          <li><a href="#">News Feed</a></li>
+        </ul>
+      </div>
+      <div class="nav-right">
+        <span class="streak-badge">Streak <b>8</b></span>
+        <a href="#" class="fancard-link">Fan Card</a>
+      </div>
+    </nav>
+
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Race Calendar</h1>
+          <p class="page-sub">Next race pinned at the top. Showing upcoming weekends only.</p>
+        </div>
+        <div class="tab-toggle" role="tablist" aria-label="Filter race list">
+          <button role="tab">All</button>
+          <button role="tab" class="active" aria-selected="true">Future</button>
+          <button role="tab">Past</button>
+        </div>
+      </div>
+
+      <div class="layout">
+
+        <!-- Championship Sidebar: bg-inset well, left rail, not a card (per memlog) -->
+        <aside class="sidebar" aria-label="Championship standings">
+          <div class="sidebar-title">Championship Standings</div>
+
+          <div class="standings-group">
+            <div class="standings-group-label">Drivers</div>
+            <div class="standing-row"><div class="standing-left"><span class="standing-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="standing-name">Norris</span></div><span class="standing-pts">312</span></div>
+            <div class="standing-row"><div class="standing-left"><span class="standing-pos">2</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="standing-name">Verstappen</span></div><span class="standing-pts">289</span></div>
+            <div class="standing-row"><div class="standing-left"><span class="standing-pos">3</span><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="standing-name">Leclerc</span></div><span class="standing-pts">241</span></div>
+            <div class="standing-row"><div class="standing-left"><span class="standing-pos">4</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="standing-name">Piastri</span></div><span class="standing-pts">228</span></div>
+            <div class="standing-row"><div class="standing-left"><span class="standing-pos">5</span><span class="team-dot" style="background:var(--team-mercedes)"></span><span class="standing-name">Russell</span></div><span class="standing-pts">201</span></div>
+          </div>
+
+          <div class="standings-group">
+            <div class="standings-group-label">Constructors</div>
+            <div class="standing-row"><div class="standing-left"><span class="standing-pos">1</span><span class="team-dot" style="background:var(--team-mclaren)"></span><span class="standing-name">McLaren</span></div><span class="standing-pts">567</span></div>
+            <div class="standing-row"><div class="standing-left"><span class="standing-pos">2</span><span class="team-dot" style="background:var(--team-ferrari)"></span><span class="standing-name">Ferrari</span></div><span class="standing-pts">438</span></div>
+            <div class="standing-row"><div class="standing-left"><span class="standing-pos">3</span><span class="team-dot" style="background:var(--team-redbull)"></span><span class="standing-name">Red Bull Racing</span></div><span class="standing-pts">401</span></div>
+          </div>
+
+          <div class="sidebar-footer">Same live data source as <a href="#">Standings</a>.</div>
+        </aside>
+
+        <!-- Redesigned Race Weekend cards -->
+        <div>
+          <div class="section-label">Next race</div>
+          <div class="weekend-list" style="margin-bottom:28px;">
+
+            <a class="weekend-card pinned">
+              <div class="track-outline-panel">
+                <svg viewBox="85 -5 330 510" fill="none">
+                  <!-- Real Spa-Francorchamps GP layout (spa-francorchamps-4, 2007-present), traced from f1db/f1db (CC-BY-4.0) -->
+                  <path d="M167.75 20.858c-3.075-5.364-.283-7.034 3.387-5.065 3.669 1.97 49.393 30.95 55.603 35.171 6.21 4.22 10.613 8.816 14.395 13.224 6.116 7.128 29.072 34.701 33.87 40.235 2.327 2.682 4.765 5.265 8.892 6.504.742.223 1.542.375 2.398.53 3.105.563 9.733 2.517 14.112 9.848 4.987 8.348 5.552 11.818 4.705 22.04-.49 5.916.164 11.615 2.258 14.631 5.08 7.316 15.721 22.54 22.956 32.545 8.75 12.099 16.935 28.98 20.322 40.235 3.387 11.255 41.49 144.622 43.467 152.5 1.975 7.878 4.009 9.705-5.504 15.334-4.516 2.673-8.435 6.431-6.774 13.787 1.27 5.628 9.744 26.446.846 32.639-2.08 1.447-48.41 32.702-57.014 38.265-5.222 3.377-12.385.885-15.242-4.08-2.856-4.964-3.503-11.631 4.093-15.897 5.927-3.329 9.314-5.205 25.685-14.96 3.995-2.38 6.181-7.751 3.198-14.442-2.634-5.909-7.55-20.755-9.972-27.574-5.645-15.897-10.43-48.422-14.254-69.216-1.552-8.44-7.338-16.882-19.193-18.007-2.61-.248-11.29-.844-18.77-.563-7.303.275-20.816 4.787-27.66 22.79-5.08 13.366-15.524 40.095-23.992 62.464-6.59 17.407-22.297 12.661-24.696 10.832-5.53-4.215-19.68-14.49-31.19 1.688-5.503 7.738-16.934 26.59-23.567 36.86-7.403 11.462-15.806 3.657-38.81-13.506-9.759-7.282-7.215-21.806-5.786-27.293 6.586-25.285 18.77-40.094 31.189-50.786s29.919-23.353 50.805-30.669c20.887-7.315 27.2-13.496 33.023-24.197 16.23-29.825 24.133-42.908 22.44-57.54-1.694-14.63-19.053-43.752-22.722-56.413-2.69-9.285-4.774-32.872-5.249-52.615-.083-3.47-.676-7.138 6.096-6.19 10.725 1.5 7.765-7.127 6.21-9.379-7.904-11.442-11.323-16.99-17.782-28.324-7.057-12.38-39.515-71.467-41.773-75.406z"
+                    stroke="#3a4150" stroke-width="16" stroke-linejoin="round"/>
+                  <line x1="177" y1="10" x2="163" y2="24" stroke="var(--accent-editorial)" stroke-width="6"/>
+                </svg>
+                <div class="track-outline-label">Circuit de Spa-Francorchamps</div>
+              </div>
+              <div class="weekend-body">
+                <div class="weekend-head">
+                  <div class="weekend-circuit">
+                    <span class="weekend-flag">🇧🇪</span>
+                    <span class="weekend-name">Belgian Grand Prix</span>
+                    <span class="weekend-country">Spa-Francorchamps</span>
+                  </div>
+                  <div class="weekend-dates">
+                    <span class="live-badge"><span class="pulse-dot"></span>Next race: 14 days</span><br>
+                    <span style="margin-top:6px;display:inline-block;">25–27 Jul 2026</span><br>
+                    <span class="race-time">Race: Sun 15:00 Track</span>
+                  </div>
+                </div>
+                <div class="fastest-laps">
+                  <div class="fastest-lap-row">
+                    <span class="fl-label">All-time fastest lap</span>
+                    <span><span class="fl-value">1:46.286</span><span class="fl-driver">Valtteri Bottas · 2018</span></span>
+                  </div>
+                  <div class="fastest-lap-row">
+                    <span class="fl-label">2026 fastest lap</span>
+                    <span><span class="fl-value">1:48.012</span><span class="fl-driver">Charles Leclerc</span></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+
+          <div class="section-label">Later this season</div>
+          <div class="weekend-list">
+
+            <a class="weekend-card">
+              <div class="track-outline-panel">
+                <svg viewBox="95 -5 310 510" fill="none">
+                  <!-- Real Monza GP layout (monza-7, 2000-present), traced from f1db/f1db (CC-BY-4.0) -->
+                  <path d="M218.372 50.51c17.128-1.458 28.349-2.045 40.274-3.238 9.544-.954 18.648-.863 32.116-1.38 3.542-.136 3.729-.748 5.353-5.354 1.036-2.935 1.478-4.501 4.144-4.835 5.525-.69 9.921-1.651 11.443-2.091 14.149-4.09 33.715-10.744 48.213-17.291 6.233-2.814 20.461 2.978 21.497 16.187 1.036 13.21 3.53 38.46 4.015 45.973.518 8.029.022 9.197-4.533 11.655-9.842 5.31-36.237 19.593-46.102 25.511-14.892 8.936-29.224 17.864-38.59 26.03-10.102 8.806-73.808 64.464-80.377 70.318-3.39 3.023-6.907 6.216-12.087 10.705-3.24 2.809-2.08 5.871-1.38 10.878 1.035 7.425-.519 16.403-8.289 21.756-5.758 3.967-6.446 5.425-7.248 12.962-4.732 44.498-20.042 187.268-21.674 201.017-1.813 15.28-17.22 18.9-29.267 11.784-24.993-14.763-21.878-47.89-20.85-65.527.408-6.966 12.017-143.36 19.435-230.17.309-3.611.466-5.692 5.3-5.347 5.184.37 5.612-1.727 3.54-7.77-3.737-10.9-5.649-24.2-5.06-31.068 1.369-15.987 2.231-26.008 2.297-26.732 1.804-19.481 7.9-39.11 33.93-52.707 14.168-7.4 25.64-9.712 43.9-11.266z"
+                    stroke="#3a4150" stroke-width="16" stroke-linejoin="round" fill="none"/>
+                  <line x1="228" y1="40" x2="248" y2="48" stroke="var(--accent-editorial)" stroke-width="6"/>
+                </svg>
+                <div class="track-outline-label">Autodromo Nazionale Monza</div>
+              </div>
+              <div class="weekend-body">
+                <div class="weekend-head">
+                  <div class="weekend-circuit">
+                    <span class="weekend-flag">🇮🇹</span>
+                    <span class="weekend-name">Italian Grand Prix</span>
+                    <span class="weekend-country">Monza</span>
+                  </div>
+                  <div class="weekend-dates">
+                    <span style="margin-top:6px;display:inline-block;">5–7 Sep 2026</span><br>
+                    <span class="race-time">Race: Sun 15:00 Track</span>
+                  </div>
+                </div>
+                <div class="fastest-laps">
+                  <div class="fastest-lap-row">
+                    <span class="fl-label">All-time fastest lap</span>
+                    <span><span class="fl-value">1:21.046</span><span class="fl-driver">Rubens Barrichello · 2004</span></span>
+                  </div>
+                  <div class="fastest-lap-row">
+                    <span class="fl-label">2026 fastest lap</span>
+                    <span><span class="fl-value">1:23.398</span><span class="fl-driver">Oscar Piastri</span></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+
+            <a class="weekend-card">
+              <div class="track-outline-panel">
+                <svg viewBox="1 25 505 450" fill="none">
+                  <!-- Real Zandvoort GP layout (zandvoort-5, 2021-present), traced from f1db/f1db (CC-BY-4.0) -->
+                  <path d="M21.069 357.833c1.298-3.172 2.643-6.403 4.005-9.703 39.95-96.747 102.157-247.306 119.655-289.933 3.898-9.5 13.163-13.63 23.395-9.5 7.133 2.878 10.938 7.388 12.269 15.545 1.314 8.052-2.023 13.112-5.136 22.264-4.375 12.858-8.062 21.928-13.314 34.737-4.565 11.131-8.748 22.264-9.13 36.082-.372 13.554-.299 18.144-.57 23.607-.57 11.515-4.946 18.903-18.07 23.797-11.036 4.116-19.445 6.953-26.765 9.625-1.385.507-21.738 7.073-16.317 23.482 6.249 18.915 23.516 12.476 24.897 12.061 15.203-4.553 47.601-15.05 61.552-19.45 10.043-3.166 34.618-2.687 52.782 1.92 11.556 2.929 31.293 9.03 49.644 9.5 18.735.48 49.833-20.823 58.678-27.156 8.845-6.334 25.772-12.533 39.469-11.994 21.969.863 51.066 3.037 60.96 3.742 13.506.96 37.51 9.447 43.938 33.01 5.706 20.919-1.52 36.273-8.178 46.158-8.541 12.678-20.542 29.076-26.249 40.016-3.437 6.589-12.174 24.375-19.503 39.417-4.837 9.93-9.028 16.623-32.613 14.32-11.761-1.15-36.85-4.875-62.578-28.019-8.75-7.87-7.989-18.233-4.755-22.07 6.896-8.183 14.836-12.283 23.396-13.434 21.706-2.92 24.918-2.303 53.638-13.243 13.996-5.329 17.746-17.038 15.788-27.636-2.093-11.325-9.892-17.658-23.777-19.577-42.12-5.824-79.576-3.528-110.13 2.304-42.225 8.06-79.517 23.968-116.977 43.373-14.076 7.294-15.977-1.727-20.16-10.364-3.746-7.729-11.831-9.875-19.213-7.87-9.89 2.688-12.487 9.57-11.601 15.162 2.853 18.04 16.166 95.962 20.16 117.456 3.164 17.024-2.852 36.465-27.77 37.234-15.79.488-29.415.122-50.785-2.879-15.026-2.11-34.119-17.863-40.896-34.546-4.754-11.709-10.841-30.324.26-57.438Z"
+                    stroke="#3a4150" stroke-width="16" stroke-linejoin="round" fill="none"/>
+                  <line x1="15" y1="345" x2="35" y2="365" stroke="var(--accent-editorial)" stroke-width="6"/>
+                </svg>
+                <div class="track-outline-label">Circuit Zandvoort</div>
+              </div>
+              <div class="weekend-body">
+                <div class="weekend-head">
+                  <div class="weekend-circuit">
+                    <span class="weekend-flag">🇳🇱</span>
+                    <span class="weekend-name">Dutch Grand Prix</span>
+                    <span class="weekend-country">Zandvoort</span>
+                  </div>
+                  <div class="weekend-dates">
+                    <span style="margin-top:6px;display:inline-block;">28–30 Aug 2026</span><br>
+                    <span class="race-time">Race: Sun 14:00 Track</span>
+                  </div>
+                </div>
+                <div class="fastest-laps">
+                  <div class="fastest-lap-row">
+                    <span class="fl-label">All-time fastest lap</span>
+                    <span><span class="fl-value">1:11.097</span><span class="fl-driver">Lewis Hamilton · 2021</span></span>
+                  </div>
+                  <div class="fastest-lap-row">
+                    <span class="fl-label">2026 fastest lap</span>
+                    <span><span class="fl-value">1:13.222</span><span class="fl-driver">Max Verstappen</span></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+
+          </div>
+
+          <!-- secondary illustration: mobile drawer-collapsed sidebar state -->
+          <div class="mobile-illustration">
+            <div class="phone-frame">
+              <div class="phone-screen">
+                <div class="phone-nav">
+                  <div class="hamburger"><span></span><span></span><span></span></div>
+                  <div style="font-size:12px;font-weight:700;">F1<span style="color:var(--accent-editorial)">_poc</span></div>
+                  <div style="width:20px;"></div>
+                </div>
+                <div class="phone-drawer-tab">
+                  <span>Championship standings <b>Norris leads · McLaren leads</b></span>
+                  <span class="chevron">▾</span>
+                </div>
+                <div class="phone-card">
+                  <b>🇧🇪 Belgian Grand Prix</b>
+                  Next race: 14 days · Spa-Francorchamps
+                </div>
+              </div>
+            </div>
+            <div class="mobile-illustration-caption"><b>Mobile (&lt; md):</b> the Championship Sidebar collapses to a tappable drawer summary above the race list, expanding to the same two standings groups on tap — per memlog, "collapses to a drawer on mobile."</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

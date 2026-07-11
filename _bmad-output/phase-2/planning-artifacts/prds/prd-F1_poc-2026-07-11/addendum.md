@@ -8,11 +8,11 @@ _Technical decisions and implementation context that belong downstream (architec
 
 Both the Calendar race card (FR-4) and the Race Weekend Detail page (FR-13) need a real circuit track outline, at two different sizes and levels of detail. Not yet decided:
 
-- **Source of the outline geometry** — hand-authored SVG per circuit, a public dataset of circuit layouts, or generated from Ergast/OpenF1 coordinate data. OpenF1's live x/y car-position stream, already used for MVP FR-7's animated track map, implies the geometry exists somewhere in the data pipeline and may be reusable rather than needing a new source.
-- **Shared asset vs. two renderings** — whether the card-level (FR-4) and detail-page-level (FR-13) outlines are the same asset at different sizes, or warrant separate treatments (for example, the detail page could overlay sector markers or DRS zones).
-- **Degradation behavior** — the PRD confirms missing outlines degrade gracefully; the specific fallback treatment (omit entirely vs. generic placeholder shape) is still open.
+- **Source of the outline geometry — resolved during the Phase 2 UX session (2026-07-11).** [`f1db/f1db`](https://github.com/f1db/f1db) (CC-BY-4.0, attribution required) provides accurate, ready-made SVG outlines for every circuit and every historical layout, in four styles (black/black-outline/white/white-outline), at `src/assets/circuits/{style}/{circuitId}-{layoutNumber}.svg`. `src/data/circuits/{circuitId}.yml` maps layout numbers to year ranges — always use the entry with "present" in its range for the current F1 configuration (e.g. `monza-7`, not `monza-1`). Verified by rendering to PNG and visual review: recognizably accurate for Monza, Spa-Francorchamps, Zandvoort, and Silverstone. Alternatives noted but not used: [`julesr0y/f1-circuits-svg`](https://github.com/julesr0y/f1-circuits-svg) (same CC-BY-4.0 terms) and OpenStreetMap's `highway=raceway` tag (ODbL, raw GPS-traced coordinates via Overpass API, for a from-scratch/coordinate-based approach instead of pre-made SVGs). OpenF1's live x/y stream remains a live-position *data* source, not a shape *asset* source — the two are complementary, not alternatives.
+- **Shared asset vs. two renderings** — the Phase 2 mocks reuse the same f1db path at two sizes/crops (a tight bounding-box crop scaled down for the card, a larger detailed crop for the Race Weekend Detail page); no separate asset needed per size. Whether the detail page additionally overlays sector markers or DRS zones on top of the f1db outline is still open.
+- **Degradation behavior** — the PRD confirms missing outlines degrade gracefully; the specific fallback treatment (omit entirely vs. generic placeholder shape) is still open. Moot for any circuit f1db covers (all current F1 calendar circuits do); only relevant if a future calendar entry lacks an f1db layout.
 
-Architect/UX to resolve before FR-4/FR-13 implementation.
+Architect to confirm licensing/attribution handling (CC-BY-4.0 requires crediting f1db) before FR-4/FR-13 implementation; otherwise this is substantially de-risked.
 
 ## FR-11 — Fan Card asset sourcing
 
