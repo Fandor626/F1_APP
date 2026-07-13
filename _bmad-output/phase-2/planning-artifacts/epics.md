@@ -380,45 +380,27 @@ Fans get nudged toward the Fan Card feature from Standings, and once there, end 
 
 **FRs covered:** FR-10, FR-11, FR-12 | **UX-DRs:** UX-DR5, UX-DR6 | **Architecture:** AD-9, AD-10, AD-13
 
-### Story 9.1: Shared Modal primitive
-
-As a fan interacting with any overlay-triggered flow in the app (starting with the Fan Card prompt),
-I want dialogs to behave predictably and accessibly,
-So that I can operate them with a mouse, touch, or keyboard alike.
-
-**Acceptance Criteria:**
-
-**Given** a Modal is opened
-**When** it renders
-**Then** it is portal-rendered above page content, with `role="dialog"` and `aria-modal="true"`
-
-**Given** a Modal is open
-**When** I press Escape or click the backdrop
-**Then** the Modal closes
-
-**Given** a Modal is open
-**When** I press Tab repeatedly
-**Then** focus is trapped within the Modal's interactive elements — it does not escape to page content behind it
-
-**Given** a Modal closes
-**When** focus returns
-**Then** it returns to the element that triggered the Modal's opening
-
-**Given** no modal/dialog primitive exists anywhere in the codebase today (reality-check per Architecture AD-13)
-**When** this story is complete
-**Then** this is the sole sanctioned overlay mechanism going forward — no ad hoc fixed-position divs for modal-like UI elsewhere in the app
-
-### Story 9.2: Fan Card creation prompt
+### Story 9.1: Fan Card creation prompt
 
 As a fan who hasn't created a Fan Card yet,
-I want to be invited to create one while I'm on the Standings page,
+I want to be invited to create one while I'm on the Standings page, through a proper dialog I can operate with a mouse, touch, or keyboard alike,
 So that I discover the feature instead of never finding it.
+
+_This story also builds the app's first shared `Modal` primitive (`shared/components/Modal.tsx`) — no modal/dialog/portal component exists anywhere in the codebase today, despite the phase-1 UX spec assuming one does (Architecture AD-13, reality-check). It's built here, as part of delivering this prompt, rather than as a separate foundation story with no fan-observable effect on its own — merged per the implementation-readiness review's recommendation._
 
 **Acceptance Criteria:**
 
 **Given** I have zero Fan Cards
 **When** I visit the Standings page
-**Then** a prompt, built on the shared Modal (Story 9.1), invites me to create a Fan Card
+**Then** a prompt, rendered via a new shared Modal primitive, invites me to create a Fan Card
+
+**Given** the Modal is open (the prompt, or any future consumer)
+**When** it renders
+**Then** it is portal-rendered above page content, with `role="dialog"` and `aria-modal="true"`; pressing Escape or clicking the backdrop closes it; Tab keeps focus trapped within its interactive elements; closing returns focus to the element that triggered it
+
+**Given** this Modal primitive is now the app's sole overlay mechanism
+**When** any future feature needs a dialog
+**Then** it reuses this component — no ad hoc fixed-position divs for modal-like UI elsewhere in the app
 
 **Given** I already hold at least one Fan Card
 **When** I visit the Standings page
@@ -430,9 +412,9 @@ So that I discover the feature instead of never finding it.
 
 **Given** the prompt is shown
 **When** I dismiss it ("Not now")
-**Then** Standings continues to work normally, and the prompt does not reappear on my next few visits
+**Then** Standings continues to work normally, and the prompt does not reappear for a suppression period (exact duration is a dev-time constant — see Architecture Deferred list, not a fixed number required by this AC)
 
-### Story 9.3: Fan Card visual redesign
+### Story 9.2: Fan Card visual redesign
 
 As a fan who has created a Fan Card,
 I want it to show my chosen driver's photo, autograph, team logo, and team principal,
@@ -460,7 +442,7 @@ So that the card feels like a real, personal keepsake rather than a placeholder.
 **When** exported
 **Then** it remains exportable as a client-side-generated image, unchanged from the MVP
 
-### Story 9.4: Multiple Fan Cards per user
+### Story 9.3: Multiple Fan Cards per user
 
 As a fan who follows more than one driver,
 I want to create and keep several Fan Cards in the same browser,
@@ -639,6 +621,8 @@ So that I can judge relevance before clicking through to the source site.
 **Then** it still redirects to the original source article, unchanged from the MVP
 
 ### Story 12.2: Automated accessibility gate
+
+_This story is framed around the developer, not a fan, because it's the enforcement mechanism for an explicit, numbered PRD success metric (SM-2 / NFR1 — WCAG 2.1 AA, axe/Lighthouse ≥ 95) rather than a fan-facing capability. It's kept as a standalone story — flagged and accepted, not silently added — because that metric has no natural home inside any of the fan-facing stories above and would otherwise go unverified._
 
 As the developer maintaining F1_poc,
 I want automated accessibility checks running in CI against the redesigned pages,
