@@ -68,6 +68,14 @@ export function ReplayBar({ season, round }: ReplayBarProps) {
     else play()
   }
 
+  // Scrubbing only ever sets the index — it never touches isPlaying, so a
+  // scrub during playback keeps playing from the new lap and a scrub while
+  // paused stays paused (AD-4, AC 3). This is the existing replayStore
+  // action from Story 8.2, unchanged — no new store logic needed here.
+  function handleScrub(event: React.ChangeEvent<HTMLInputElement>) {
+    useReplayStore.getState().setCurrentLapIndex(Number(event.target.value))
+  }
+
   const totalLaps = frames?.length ?? 0
 
   return (
@@ -96,6 +104,33 @@ export function ReplayBar({ season, round }: ReplayBarProps) {
       <span className="text-[13px] tabular-nums text-[#eef0f3]" data-testid="replay-lap-readout">
         Lap {currentLapIndex + 1} / {totalLaps || '–'}
       </span>
+      {totalLaps > 0 && (
+        <>
+          {/* Native range input: role="slider", aria-valuenow/min/max, and
+              Left/Right/Home/End keyboard stepping are all implicit browser
+              behavior — no custom keydown handling needed (UX-DR4). step={1}
+              with a totalLaps-1 max makes every value a discrete lap index,
+              never a continuous/sub-lap position (AC 2). The datalist below
+              renders native tick marks at each lap. */}
+          <input
+            type="range"
+            min={0}
+            max={totalLaps - 1}
+            step={1}
+            value={currentLapIndex}
+            onChange={handleScrub}
+            list="replay-lap-ticks"
+            aria-label="Replay lap scrub bar"
+            data-testid="replay-scrub-bar"
+            className="h-2 flex-1 accent-[#d8b65c]"
+          />
+          <datalist id="replay-lap-ticks">
+            {Array.from({ length: totalLaps }, (_, i) => (
+              <option key={i} value={i} />
+            ))}
+          </datalist>
+        </>
+      )}
     </div>
   )
 }
