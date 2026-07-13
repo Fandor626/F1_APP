@@ -36,6 +36,18 @@ function App() {
         </Link>
       </nav>
       <Outlet />
+      <footer className="border-t border-[#2a2f38] px-6 py-4 text-[11px] text-[#6b7280]">
+        Track outlines:{' '}
+        <a
+          href="https://github.com/f1db/f1db"
+          target="_blank"
+          rel="noreferrer"
+          className="hover:text-[#d8b65c]"
+        >
+          f1db/f1db
+        </a>
+        , CC-BY-4.0
+      </footer>
     </>
   )
 }

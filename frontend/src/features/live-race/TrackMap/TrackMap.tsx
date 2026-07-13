@@ -8,11 +8,9 @@ import type { Transform } from './useTrackInterpolation'
 interface CircuitConfig {
   circuitId: string
   viewBox: string
-  transform: Transform
+  transform?: Transform
   trackPath: string
 }
-
-const apiBase = import.meta.env.VITE_API_BASE_URL ?? ''
 
 interface TrackMapProps {
   circuitId: string | null
@@ -30,7 +28,7 @@ export function TrackMap({ circuitId }: TrackMapProps) {
     setConfig(null)
     setUnavailable(false)
 
-    fetch(`${apiBase}/circuit-configs/${circuitId}.json`)
+    fetch(`/circuit-configs/${circuitId}.json`)
       .then(r => {
         if (!r.ok) throw new Error('not found')
         return r.json() as Promise<CircuitConfig>

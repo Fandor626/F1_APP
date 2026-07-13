@@ -20,7 +20,7 @@ beforeEach(() => {
     circuitId: null,
   })
   vi.resetAllMocks()
-  global.fetch = vi.fn()
+  globalThis.fetch = vi.fn()
 })
 
 describe('TrackMap', () => {
@@ -30,7 +30,7 @@ describe('TrackMap', () => {
   })
 
   it('shows unavailable message when circuit config fetch fails', async () => {
-    vi.mocked(global.fetch).mockResolvedValue({ ok: false } as Response)
+    vi.mocked(globalThis.fetch).mockResolvedValue({ ok: false } as Response)
     render(<TrackMap circuitId="unknowncircuit" />)
     await waitFor(() =>
       expect(screen.getByTestId('track-map-unavailable')).toBeInTheDocument()
@@ -38,12 +38,24 @@ describe('TrackMap', () => {
   })
 
   it('renders SVG when config loads successfully', async () => {
-    vi.mocked(global.fetch).mockResolvedValue({
+    vi.mocked(globalThis.fetch).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockConfig),
     } as Response)
     render(<TrackMap circuitId="monza" />)
     await waitFor(() => expect(screen.getByTestId('track-map-svg')).toBeInTheDocument())
+  })
+
+  it('fetches the circuit config from a relative same-origin path, never the backend API base URL', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockConfig),
+    } as Response)
+    render(<TrackMap circuitId="monza" />)
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
+
+    const requestedUrl = vi.mocked(globalThis.fetch).mock.calls[0][0]
+    expect(requestedUrl).toBe('/circuit-configs/monza.json')
   })
 
   it('returns null in fallback mode', () => {
@@ -53,7 +65,7 @@ describe('TrackMap', () => {
   })
 
   it('renders driver dots for drivers with x/y coordinates', async () => {
-    vi.mocked(global.fetch).mockResolvedValue({
+    vi.mocked(globalThis.fetch).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockConfig),
     } as Response)
@@ -78,7 +90,7 @@ describe('TrackMap', () => {
   })
 
   it('renders purple stroke on driver dot for session-fastest sector', async () => {
-    vi.mocked(global.fetch).mockResolvedValue({
+    vi.mocked(globalThis.fetch).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockConfig),
     } as Response)
