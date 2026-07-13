@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using F1App.Api.Clients;
 using F1App.Api.Dtos.Ergast;
 using F1App.Api.Models;
@@ -10,7 +11,8 @@ public class RaceScheduleService(
     IErgastClient ergastClient,
     IMemoryCache cache,
     StandingsService standingsService,
-    CircuitProfileService circuitProfileService)
+    CircuitProfileService circuitProfileService,
+    ILogger<RaceScheduleService> logger)
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(24);
 
@@ -65,13 +67,35 @@ public class RaceScheduleService(
         var circuitIds = races.Select(r => r.Circuit.CircuitId).Distinct().ToList();
         var profileTasks = circuitIds.ToDictionary(
             id => id,
-            id => circuitProfileService.GetCircuitProfileAsync(id, cancellationToken));
+            id => GetCircuitProfileSafeAsync(id, cancellationToken));
         await Task.WhenAll(profileTasks.Values);
 
         return races
             .Select(race => ToSummary(race, profileTasks[race.Circuit.CircuitId].Result))
             .OrderBy(race => race.RaceStart)
             .ToList();
+    }
+
+    // Lap records are enrichment — a single circuit profile failing (429 after
+    // retries, timeout, etc.) must not take down the whole schedule response.
+    private async Task<CircuitProfile?> GetCircuitProfileSafeAsync(
+        string circuitId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await circuitProfileService.GetCircuitProfileAsync(circuitId, cancellationToken);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            logger.LogWarning(ex, "Circuit profile for {CircuitId} rate-limited — returning schedule without lap records", circuitId);
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            logger.LogWarning(ex, "Circuit profile for {CircuitId} unavailable — returning schedule without lap records", circuitId);
+            return null;
+        }
     }
 
     public async Task<LastRaceResult?> GetLastRaceResultAsync(CancellationToken cancellationToken)

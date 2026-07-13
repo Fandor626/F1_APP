@@ -41,18 +41,22 @@ builder.Services.AddSingleton(TimeProvider.System);
 // ("current.json") against BaseAddress by replacing the last path segment
 // unless BaseAddress itself ends in "/".
 var ergastBaseUrl = builder.Configuration["ErgastBaseUrl"]!.TrimEnd('/') + "/";
+builder.Services.AddTransient<ErgastThrottlingHandler>();
 builder.Services.AddHttpClient<IErgastClient, ErgastClient>(client =>
 {
     client.BaseAddress = new Uri(ergastBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(10);
-});
+})
+.AddHttpMessageHandler<ErgastThrottlingHandler>();
 
 var openF1BaseUrl = builder.Configuration["OpenF1BaseUrl"]!.TrimEnd('/') + "/";
+builder.Services.AddTransient<OpenF1ThrottlingHandler>();
 builder.Services.AddHttpClient<IOpenF1Client, OpenF1Client>(client =>
 {
     client.BaseAddress = new Uri(openF1BaseUrl);
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<OpenF1ThrottlingHandler>();
 
 builder.Services.AddScoped<RaceScheduleService>();
 builder.Services.AddScoped<RaceReplayService>();
