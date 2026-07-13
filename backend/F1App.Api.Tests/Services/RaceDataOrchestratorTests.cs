@@ -21,7 +21,8 @@ public class RaceDataOrchestratorTests
 {
     private static RaceDataOrchestrator CreateOrchestrator(
         TimeProvider? timeProvider = null,
-        int joinToleranceMs = 500)
+        int joinToleranceMs = 500,
+        Mock<IOpenF1Client>? openF1Mock = null)
     {
         var mockHub = new Mock<IHubContext<RaceHub>>();
         var mockClients = new Mock<IHubClients>();
@@ -29,7 +30,7 @@ public class RaceDataOrchestratorTests
         mockHub.Setup(h => h.Clients).Returns(mockClients.Object);
         mockClients.Setup(c => c.Group("race")).Returns(mockProxy.Object);
 
-        var mockOpenF1 = new Mock<IOpenF1Client>();
+        var mockOpenF1 = openF1Mock ?? new Mock<IOpenF1Client>();
 
         var mockScope = new Mock<IServiceScope>();
         var mockSp = new Mock<IServiceProvider>();
@@ -531,6 +532,133 @@ public class RaceDataOrchestratorTests
 
         Assert.Equal(SessionMode.Fallback, snapshot.SessionMode);
         Assert.Empty(snapshot.Drivers);
+    }
+
+    // EnrichFallbackFromOpenF1Async (Story 8.1)
+
+    private static OpenF1SessionDto MakeSession(int sessionKey, DateTimeOffset dateStart) =>
+        new(sessionKey, "Race", dateStart);
+
+    [Fact]
+    public async Task EnrichFallbackFromOpenF1Async_ResolvesSessionAndPopulatesLapChartFastestSectorsAndTimeline()
+    {
+        var openF1 = new Mock<IOpenF1Client>();
+        openF1.Setup(c => c.GetRaceSessionsAsync(2026, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeSession(9999, new DateTimeOffset(2026, 9, 7, 13, 0, 0, TimeSpan.Zero))]);
+        openF1.Setup(c => c.GetLapsForSessionAsync(9999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                MakeLapWithSectors(1, 1, s1: 30.1, s2: 35.2, s3: 25.3),
+                MakeLapWithSectors(1, 2, s1: 29.9, s2: 34.8, s3: 24.9),
+                MakeLapWithSectors(44, 1, s1: 31.0, s2: 35.0, s3: 25.0),
+            ]);
+        openF1.Setup(c => c.GetStintsForSessionAsync(9999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeStint(1, 1, 1, "MEDIUM", tyreAgeAtStart: 0)]);
+        openF1.Setup(c => c.GetRaceControlForSessionAsync(9999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new OpenF1RaceControlDto(DateTimeOffset.UtcNow, 1, "SafetyCar", null, "SAFETY CAR DEPLOYED")]);
+        openF1.Setup(c => c.GetPitStopsForSessionAsync(9999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new OpenF1PitDto(DateTimeOffset.UtcNow, 44, 1)]);
+        openF1.Setup(c => c.GetDriversForSessionAsync(9999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new OpenF1DriverInfoDto(1, "VER", "Red Bull Racing", "3671C6"),
+                new OpenF1DriverInfoDto(44, "HAM", "Ferrari", "E8002D"),
+            ]);
+
+        var sut = CreateOrchestrator(openF1Mock: openF1);
+        sut._fallbackDrivers = [new DriverState { DriverNumber = 1, DriverCode = "VER", TeamColour = "555555", Position = 1 }];
+
+        await sut.EnrichFallbackFromOpenF1Async("2026-09-07", CancellationToken.None);
+
+        Assert.Equal(2, sut._fallbackLapChart[1].Count);
+        Assert.NotNull(sut._fallbackFastestSectors);
+        Assert.Equal(1, sut._fallbackFastestSectors!.S1!.DriverNumber); // 29.9 (driver 1) beats 31.0 (driver 44)
+        Assert.Equal("VER", sut._fallbackFastestSectors.S1.DriverCode);
+        Assert.Contains(sut._fallbackTimeline, e => e.EventType == "SafetyCar");
+        Assert.Contains(sut._fallbackTimeline, e => e.EventType == "PitStop" && e.DriverCode == "HAM");
+        Assert.Contains(sut._fallbackTimeline, e => e.EventType == "FastestLap");
+        Assert.Equal("3671C6", sut._fallbackDrivers[0].TeamColour); // merged in from session driver info
+    }
+
+    [Fact]
+    public async Task EnrichFallbackFromOpenF1Async_PopulatesTyreCompoundAndStintLapsFromFinalStint()
+    {
+        var openF1 = new Mock<IOpenF1Client>();
+        openF1.Setup(c => c.GetRaceSessionsAsync(2026, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeSession(9999, new DateTimeOffset(2026, 9, 7, 13, 0, 0, TimeSpan.Zero))]);
+        openF1.Setup(c => c.GetLapsForSessionAsync(9999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([MakeLapWithSectors(1, 1, s1: 30, s2: 35, s3: 25), MakeLapWithSectors(1, 5, s1: 30, s2: 35, s3: 25)]);
+        openF1.Setup(c => c.GetStintsForSessionAsync(9999, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                MakeStint(1, 1, 1, "SOFT", tyreAgeAtStart: 0),
+                MakeStint(1, 2, 3, "HARD", tyreAgeAtStart: 0),
+            ]);
+        openF1.Setup(c => c.GetRaceControlForSessionAsync(9999, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        openF1.Setup(c => c.GetPitStopsForSessionAsync(9999, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        openF1.Setup(c => c.GetDriversForSessionAsync(9999, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        var sut = CreateOrchestrator(openF1Mock: openF1);
+        sut._fallbackDrivers = [new DriverState { DriverNumber = 1, Position = 1 }];
+
+        await sut.EnrichFallbackFromOpenF1Async("2026-09-07", CancellationToken.None);
+
+        // Final stint (stint 2, HARD) started at lap 3; max lap seen is 5 → 0 + (5-3+1) = 3
+        Assert.Equal("HARD", sut._fallbackDrivers[0].TyreCompound);
+        Assert.Equal(3, sut._fallbackDrivers[0].StintLaps);
+    }
+
+    [Fact]
+    public async Task EnrichFallbackFromOpenF1Async_NoMatchingSession_LeavesFallbackFieldsAtEmptyDefaults()
+    {
+        var openF1 = new Mock<IOpenF1Client>();
+        openF1.Setup(c => c.GetRaceSessionsAsync(2026, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+
+        var sut = CreateOrchestrator(openF1Mock: openF1);
+        sut._fallbackDrivers = [new DriverState { DriverNumber = 1, Position = 1 }];
+
+        await sut.EnrichFallbackFromOpenF1Async("2026-09-07", CancellationToken.None);
+
+        Assert.Empty(sut._fallbackLapChart);
+        Assert.Null(sut._fallbackFastestSectors);
+        Assert.Empty(sut._fallbackTimeline);
+        // Ergast-sourced fallback drivers untouched when enrichment finds nothing
+        Assert.Single(sut._fallbackDrivers);
+    }
+
+    [Fact]
+    public async Task EnrichFallbackFromOpenF1Async_OpenF1ThrowsDuringSessionLookup_DegradesGracefully()
+    {
+        var openF1 = new Mock<IOpenF1Client>();
+        openF1.Setup(c => c.GetRaceSessionsAsync(2026, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("OpenF1 unavailable"));
+
+        var sut = CreateOrchestrator(openF1Mock: openF1);
+
+        await sut.EnrichFallbackFromOpenF1Async("2026-09-07", CancellationToken.None);
+
+        Assert.Empty(sut._fallbackLapChart);
+        Assert.Null(sut._fallbackFastestSectors);
+        Assert.Empty(sut._fallbackTimeline);
+    }
+
+    [Fact]
+    public void BuildSnapshot_FallbackModeWithEnrichedData_UsesFallbackLapChartAndTimeline()
+    {
+        var sut = CreateOrchestrator();
+        sut._sessionMode = SessionMode.Fallback;
+        sut._fallbackDrivers = [new DriverState { DriverNumber = 1, Position = 1 }];
+        sut._fallbackLapChart = new Dictionary<int, IReadOnlyList<LapTimeEntry>>
+        {
+            [1] = [MakeLap(1, 90.5)],
+        };
+        sut._fallbackFastestSectors = new FastestSectorBoard(
+            new FastestSectorEntry(1, "VER", "3671C6", 29.9), null, null);
+        sut._fallbackTimeline = [new RaceTimelineEvent(1, "SafetyCar", null, "SAFETY CAR DEPLOYED")];
+
+        var snapshot = sut.BuildSnapshot();
+
+        Assert.Single(snapshot.LapChart[1]);
+        Assert.NotNull(snapshot.FastestSectors);
+        Assert.Single(snapshot.Timeline);
+        Assert.Equal("SafetyCar", snapshot.Timeline[0].EventType);
     }
 
     [Fact]

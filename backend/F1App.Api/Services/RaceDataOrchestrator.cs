@@ -39,6 +39,16 @@ public class RaceDataOrchestrator(
     internal SessionMode _sessionMode = SessionMode.Live;
     internal IReadOnlyList<DriverState> _fallbackDrivers = [];
     internal string? _fallbackRaceName;
+    // Historical enrichment for the fallback snapshot (Story 8.1) — populated
+    // from OpenF1's historical (explicit session_key) endpoints in
+    // LoadFallbackDataAsync, since Ergast alone has no lap/sector/stint/race-
+    // control archive. Stay at their empty/null defaults (graceful
+    // degradation, not an error) if the historical session_key can't be
+    // resolved or the historical fetch fails.
+    internal IReadOnlyDictionary<int, IReadOnlyList<LapTimeEntry>> _fallbackLapChart =
+        new Dictionary<int, IReadOnlyList<LapTimeEntry>>();
+    internal FastestSectorBoard? _fallbackFastestSectors;
+    internal IReadOnlyList<RaceTimelineEvent> _fallbackTimeline = [];
 
     // Location tracking
     internal readonly ConcurrentDictionary<int, OpenF1LocationDto> _latestLocations = new();
@@ -248,8 +258,14 @@ public class RaceDataOrchestrator(
     // two); CarEvent-category messages read like "CAR 44 (HAM) STOPPED AT TURN 10"
     // for retirements/mechanical stops, with driver_number null on the DTO itself —
     // the car number only appears in the free-text message.
-    internal RaceTimelineEvent? ParseRaceControlEvent(OpenF1RaceControlDto msg)
+    // driverInfo defaults to the live-populated _driverInfo; historical
+    // fallback enrichment passes an explicit override for the past session's
+    // own driver roster (Story 8.1) — never mixes the two.
+    internal RaceTimelineEvent? ParseRaceControlEvent(
+        OpenF1RaceControlDto msg,
+        IReadOnlyDictionary<int, OpenF1DriverInfoDto>? driverInfo = null)
     {
+        var drivers = driverInfo ?? _driverInfo;
         var lapNumber = msg.LapNumber ?? 0;
         var message = msg.Message ?? "";
         var upper = message.ToUpperInvariant();
@@ -268,7 +284,7 @@ public class RaceDataOrchestrator(
         if (msg.Category == "CarEvent" && upper.Contains("STOPPED"))
         {
             var driverNum = ExtractDriverNumber(message);
-            string? driverCode = driverNum is not null && _driverInfo.TryGetValue(driverNum.Value, out var info)
+            string? driverCode = driverNum is not null && drivers.TryGetValue(driverNum.Value, out var info)
                 ? info.NameAcronym
                 : driverNum?.ToString();
             return new RaceTimelineEvent(lapNumber, "Dnf", driverCode, message);
@@ -357,11 +373,149 @@ public class RaceDataOrchestrator(
 
             logger.LogInformation("RaceDataOrchestrator: loaded fallback data — {RaceName}, {Count} drivers",
                 _fallbackRaceName, _fallbackDrivers.Count);
+
+            await EnrichFallbackFromOpenF1Async(raceData.Date, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "RaceDataOrchestrator: failed to load fallback race data; fallback drivers will be empty");
         }
+    }
+
+    // Ergast's historical results have no lap-by-lap sector times, tyre
+    // stints, or race-control archive — only OpenF1 does, keyed by a numeric
+    // session_key rather than date/circuit. Resolves that session_key from
+    // the race date, then fetches and assembles a static final-state view
+    // (not the lap-by-lap temporal sequence Story 8.2's replay will need —
+    // this is a deliberate simplification for a non-steppable fallback
+    // snapshot). Any failure here degrades gracefully: the three
+    // _fallback* fields stay at their empty/null defaults, matching the
+    // pre-existing "sectors board absent during fallback" precedent.
+    internal async Task EnrichFallbackFromOpenF1Async(string raceDateText, CancellationToken ct)
+    {
+        try
+        {
+            if (!DateOnly.TryParse(raceDateText, CultureInfo.InvariantCulture, out var raceDate))
+                return;
+
+            var sessions = await openF1Client.GetRaceSessionsAsync(raceDate.Year, ct);
+            var session = sessions.FirstOrDefault(s => DateOnly.FromDateTime(s.DateStart.UtcDateTime) == raceDate);
+            if (session is null)
+            {
+                logger.LogInformation(
+                    "RaceDataOrchestrator: no OpenF1 session found for fallback race date {Date} — sectors/lap chart/timeline stay empty",
+                    raceDate);
+                return;
+            }
+
+            var sessionKey = session.SessionKey;
+
+            var lapsTask = openF1Client.GetLapsForSessionAsync(sessionKey, ct);
+            var stintsTask = openF1Client.GetStintsForSessionAsync(sessionKey, ct);
+            var raceControlTask = openF1Client.GetRaceControlForSessionAsync(sessionKey, ct);
+            var pitTask = openF1Client.GetPitStopsForSessionAsync(sessionKey, ct);
+            var driversTask = openF1Client.GetDriversForSessionAsync(sessionKey, ct);
+            await Task.WhenAll(lapsTask, stintsTask, raceControlTask, pitTask, driversTask);
+
+            var laps = lapsTask.Result;
+            var stints = stintsTask.Result;
+            var raceControl = raceControlTask.Result;
+            var pitStops = pitTask.Result;
+            var sessionDrivers = driversTask.Result.ToDictionary(d => d.DriverNumber);
+
+            _fallbackLapChart = laps
+                .Where(l => l.LapDuration.HasValue)
+                .GroupBy(l => l.DriverNumber)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (IReadOnlyList<LapTimeEntry>)[.. g
+                        .OrderBy(l => l.LapNumber)
+                        .Select(l => new LapTimeEntry(l.LapNumber, l.LapDuration, l.IsPitOutLap))]);
+
+            _fallbackFastestSectors = BuildFallbackFastestSectorBoard(laps, sessionDrivers);
+
+            var finalStints = stints
+                .GroupBy(s => s.DriverNumber)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.StintNumber).First());
+            var maxLapByDriver = laps
+                .GroupBy(l => l.DriverNumber)
+                .ToDictionary(g => g.Key, g => g.Max(l => l.LapNumber));
+
+            _fallbackDrivers = _fallbackDrivers
+                .Select(d =>
+                {
+                    var teamColour = sessionDrivers.TryGetValue(d.DriverNumber, out var info) ? info.TeamColour : d.TeamColour;
+                    string? tyreCompound = null;
+                    int? stintLaps = null;
+                    if (finalStints.TryGetValue(d.DriverNumber, out var stint))
+                    {
+                        tyreCompound = stint.Compound;
+                        if (maxLapByDriver.TryGetValue(d.DriverNumber, out var maxLap))
+                            stintLaps = stint.TyreAgeAtStart + Math.Max(0, maxLap - stint.LapStart + 1);
+                    }
+                    return d with { TeamColour = teamColour, TyreCompound = tyreCompound, StintLaps = stintLaps };
+                })
+                .ToList();
+
+            var timeline = new List<RaceTimelineEvent>();
+            foreach (var msg in raceControl)
+            {
+                var evt = ParseRaceControlEvent(msg, sessionDrivers);
+                if (evt is not null) timeline.Add(evt);
+            }
+            foreach (var pit in pitStops)
+            {
+                var code = sessionDrivers.TryGetValue(pit.DriverNumber, out var info) ? info.NameAcronym : pit.DriverNumber.ToString();
+                timeline.Add(new RaceTimelineEvent(pit.LapNumber, "PitStop", code, null));
+            }
+            var fastestLap = laps.Where(l => l.LapDuration.HasValue).OrderBy(l => l.LapDuration).FirstOrDefault();
+            if (fastestLap is not null)
+            {
+                var code = sessionDrivers.TryGetValue(fastestLap.DriverNumber, out var info) ? info.NameAcronym : fastestLap.DriverNumber.ToString();
+                timeline.Add(new RaceTimelineEvent(fastestLap.LapNumber, "FastestLap", code, null));
+            }
+            _fallbackTimeline = [.. timeline.OrderBy(e => e.LapNumber)];
+
+            logger.LogInformation(
+                "RaceDataOrchestrator: enriched fallback data from OpenF1 session {SessionKey} — {LapCount} lap records, {TimelineCount} timeline events",
+                sessionKey, laps.Count, _fallbackTimeline.Count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "RaceDataOrchestrator: failed to enrich fallback data from OpenF1; sectors/lap chart/timeline stay empty");
+        }
+    }
+
+    private static FastestSectorBoard BuildFallbackFastestSectorBoard(
+        IReadOnlyList<OpenF1LapDto> laps,
+        IReadOnlyDictionary<int, OpenF1DriverInfoDto> sessionDrivers)
+    {
+        FastestSectorEntry? MakeBest(Func<OpenF1LapDto, double?> selector)
+        {
+            OpenF1LapDto? bestLap = null;
+            var bestTime = double.MaxValue;
+            foreach (var lap in laps)
+            {
+                var t = selector(lap);
+                if (t.HasValue && t.Value < bestTime)
+                {
+                    bestTime = t.Value;
+                    bestLap = lap;
+                }
+            }
+            if (bestLap is null) return null;
+            sessionDrivers.TryGetValue(bestLap.DriverNumber, out var info);
+            return new FastestSectorEntry(
+                bestLap.DriverNumber,
+                info?.NameAcronym ?? bestLap.DriverNumber.ToString(),
+                info?.TeamColour ?? "555555",
+                bestTime);
+        }
+
+        return new FastestSectorBoard(
+            MakeBest(l => l.DurationSector1),
+            MakeBest(l => l.DurationSector2),
+            MakeBest(l => l.DurationSector3));
     }
 
     private async Task RunLoopAsync(string name, Func<CancellationToken, Task> loop, CancellationToken ct)
@@ -641,11 +795,20 @@ public class RaceDataOrchestrator(
             }
         }
 
-        var lapChart = new Dictionary<int, IReadOnlyList<LapTimeEntry>>();
-        foreach (var (driverNum, lapsByLap) in _driverLapTimes)
+        IReadOnlyDictionary<int, IReadOnlyList<LapTimeEntry>> lapChart;
+        if (_sessionMode == SessionMode.Fallback)
         {
-            if (_latestPositions.ContainsKey(driverNum))
-                lapChart[driverNum] = [.. lapsByLap.Values.OrderBy(l => l.LapNumber)];
+            lapChart = _fallbackLapChart;
+        }
+        else
+        {
+            var liveLapChart = new Dictionary<int, IReadOnlyList<LapTimeEntry>>();
+            foreach (var (driverNum, lapsByLap) in _driverLapTimes)
+            {
+                if (_latestPositions.ContainsKey(driverNum))
+                    liveLapChart[driverNum] = [.. lapsByLap.Values.OrderBy(l => l.LapNumber)];
+            }
+            lapChart = liveLapChart;
         }
 
         return new RaceStateSnapshot
@@ -657,17 +820,22 @@ public class RaceDataOrchestrator(
             FallbackRaceName = _fallbackRaceName,
             CircuitId = _activeCircuitId,
             FastestSectors = BuildFastestSectorBoard(),
-            Timeline = [.. _timelineEvents.OrderBy(e => e.LapNumber)],
+            Timeline = _sessionMode == SessionMode.Fallback
+                ? _fallbackTimeline
+                : [.. _timelineEvents.OrderBy(e => e.LapNumber)],
         };
     }
 
-    // Ergast has no sector-time archive, so the board is only meaningful during a
-    // live/stale session; fallback replay (Story 2.5) always returns null here,
-    // matching MiniSectorStatus's existing fallback behaviour.
+    // Ergast alone has no sector-time archive, so during fallback this board
+    // is only meaningful when EnrichFallbackFromOpenF1Async (Story 8.1)
+    // successfully resolved the historical OpenF1 session and populated
+    // _fallbackFastestSectors — otherwise it stays null, matching
+    // MiniSectorStatus's existing graceful-degradation behaviour rather than
+    // showing a stale or fabricated board.
     private FastestSectorBoard? BuildFastestSectorBoard()
     {
         if (_sessionMode == SessionMode.Fallback)
-            return null;
+            return _fallbackFastestSectors;
 
         FastestSectorEntry? MakeEntry(double best, int? driverNum)
         {

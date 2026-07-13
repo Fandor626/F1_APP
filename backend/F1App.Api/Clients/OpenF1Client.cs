@@ -68,4 +68,40 @@ public class OpenF1Client(HttpClient httpClient) : IOpenF1Client
 
         return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1PitDto>>(url, ct) ?? [];
     }
+
+    public async Task<IReadOnlyList<OpenF1SessionDto>> GetRaceSessionsAsync(int year, CancellationToken ct)
+    {
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1SessionDto>>(
+            $"sessions?session_type=Race&year={year}", ct) ?? [];
+    }
+
+    public async Task<IReadOnlyList<OpenF1LapDto>> GetLapsForSessionAsync(int sessionKey, CancellationToken ct)
+    {
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1LapDto>>(
+            $"laps?session_key={sessionKey}", ct) ?? [];
+    }
+
+    public async Task<IReadOnlyList<OpenF1StintDto>> GetStintsForSessionAsync(int sessionKey, CancellationToken ct)
+    {
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1StintDto>>(
+            $"stints?session_key={sessionKey}", ct) ?? [];
+    }
+
+    public async Task<IReadOnlyList<OpenF1RaceControlDto>> GetRaceControlForSessionAsync(int sessionKey, CancellationToken ct)
+    {
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1RaceControlDto>>(
+            $"race_control?session_key={sessionKey}", ct) ?? [];
+    }
+
+    public async Task<IReadOnlyList<OpenF1PitDto>> GetPitStopsForSessionAsync(int sessionKey, CancellationToken ct)
+    {
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1PitDto>>(
+            $"pit?session_key={sessionKey}", ct) ?? [];
+    }
+
+    public async Task<IReadOnlyList<OpenF1DriverInfoDto>> GetDriversForSessionAsync(int sessionKey, CancellationToken ct)
+    {
+        return await httpClient.GetFromJsonAsync<IReadOnlyList<OpenF1DriverInfoDto>>(
+            $"drivers?session_key={sessionKey}", ct) ?? [];
+    }
 }

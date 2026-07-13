@@ -9,7 +9,11 @@ vi.mock('./hooks/useSignalRConnection', () => ({
 }))
 
 vi.mock('./hooks/useLastRaceResult', () => ({
-  useLastRaceResult: vi.fn().mockReturnValue({ data: null, isPending: false }),
+  useLastRaceResult: vi.fn().mockReturnValue({ data: undefined, isPending: false, isFetched: false }),
+}))
+
+vi.mock('../../shared/api/ergast', () => ({
+  useRaceSchedule: vi.fn().mockReturnValue({ data: undefined }),
 }))
 
 function renderWithQueryClient(ui: React.ReactElement) {
@@ -96,5 +100,48 @@ describe('LiveRacePage', () => {
       expect(Object.keys(drivers)).toHaveLength(1)
       expect(drivers['4']?.driverCode).toBe('NOR')
     })
+  })
+
+  it('shows a plain on-brand message naming the next race when zero races have completed this season', async () => {
+    const { useLastRaceResult } = await import('./hooks/useLastRaceResult')
+    vi.mocked(useLastRaceResult).mockReturnValue({ data: null, isPending: false, isFetched: true } as never)
+
+    const { useRaceSchedule } = await import('../../shared/api/ergast')
+    vi.mocked(useRaceSchedule).mockReturnValue({
+      data: [
+        {
+          season: 2026, round: 1, raceName: 'Bahrain Grand Prix', circuitId: 'bahrain',
+          circuitName: 'Bahrain International Circuit', locality: 'Sakhir', country: 'Bahrain',
+          weekendStart: '2099-03-06T13:30:00+00:00', raceStart: '2099-03-08T18:00:00+00:00',
+        },
+      ],
+    } as never)
+
+    useLiveRaceStore.setState({ sessionMode: 'fallback', drivers: {} })
+    renderWithQueryClient(<LiveRacePage />)
+
+    const message = screen.getByTestId('no-races-yet')
+    expect(message).toHaveTextContent('No races completed yet this season')
+    expect(message).toHaveTextContent('Bahrain Grand Prix')
+  })
+
+  it('does not show the zero-races message once real fallback data has arrived', async () => {
+    const { useLastRaceResult } = await import('./hooks/useLastRaceResult')
+    vi.mocked(useLastRaceResult).mockReturnValue({ data: null, isPending: false, isFetched: true } as never)
+
+    useLiveRaceStore.setState({
+      sessionMode: 'fallback',
+      drivers: {
+        '4': {
+          driverNumber: 4, driverCode: 'NOR', teamName: 'McLaren', teamColour: '555555',
+          position: 1, gapToCarAhead: null, gapIsStale: false, tyreCompound: null,
+          stintLaps: null, championshipDelta: null, x: null, y: null,
+          miniSectorStatus: null, pitWindowActive: false,
+        },
+      },
+    })
+    renderWithQueryClient(<LiveRacePage />)
+
+    expect(screen.queryByTestId('no-races-yet')).not.toBeInTheDocument()
   })
 })

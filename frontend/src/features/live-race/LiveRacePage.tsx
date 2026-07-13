@@ -10,6 +10,8 @@ import { useLastRaceResult } from './hooks/useLastRaceResult'
 import { useLiveRaceStore } from './store/liveRaceStore'
 import { normalizeSnapshot } from '../../shared/utils/normalizeSnapshot'
 import { useRecordLiveVisit } from '../fan-engagement/useRecordLiveVisit'
+import { useRaceSchedule } from '../../shared/api/ergast'
+import { formatDateRange } from '../../shared/utils/dateUtils'
 
 export function LiveRacePage() {
   useSignalRConnection()
@@ -23,7 +25,8 @@ export function LiveRacePage() {
 
   const hasLiveData = Object.keys(drivers).length > 0
 
-  const { data: lastRaceData } = useLastRaceResult({ enabled: isFallback && !hasLiveData })
+  const { data: lastRaceData, isFetched: lastRaceFetched } = useLastRaceResult({ enabled: isFallback && !hasLiveData })
+  const { data: schedule } = useRaceSchedule()
 
   useEffect(() => {
     if (lastRaceData && isFallback && !hasLiveData) {
@@ -31,6 +34,26 @@ export function LiveRacePage() {
       setFallbackRaceName(lastRaceData.raceName)
     }
   }, [lastRaceData, isFallback, hasLiveData, setDrivers, setFallbackRaceName])
+
+  // No race has completed yet this season — REST confirmed it (204, resolved
+  // to null) and SignalR hasn't delivered anything either (the orchestrator
+  // never broadcasts a snapshot with zero drivers). Show a plain on-brand
+  // message naming the next race instead of a page that merely looks empty.
+  const noCompletedRacesYet = isFallback && !hasLiveData && lastRaceFetched && lastRaceData === null
+
+  if (noCompletedRacesYet) {
+    const nextRace = schedule?.find(race => new Date(race.raceStart) >= new Date())
+    return (
+      <div className="min-h-screen bg-[#14171c] text-[#eef0f3] p-4">
+        <h1 className="text-[26px] font-bold tracking-[-0.01em] mb-4">Live Race</h1>
+        <p className="text-[13px] text-[#9aa1ad]" data-testid="no-races-yet">
+          No races completed yet this season
+          {nextRace &&
+            ` — first race: ${nextRace.raceName}, ${formatDateRange(new Date(nextRace.raceStart), new Date(nextRace.raceStart))}`}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#14171c] text-[#eef0f3] p-4">
