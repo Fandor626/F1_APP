@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { CalendarPage } from './CalendarPage'
 import { server } from '../../shared/test/server'
+import { sampleDriverStandings } from '../../shared/mocks/handlers/ergastHandlers'
 import type { RaceWeekend } from '../../shared/api/ergast'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
@@ -144,6 +145,27 @@ describe('CalendarPage', () => {
     const allTab = screen.getByRole('tab', { name: 'All' })
     expect(allTab).toHaveAttribute('aria-selected', 'true')
     expect(allTab).toHaveFocus()
+  })
+
+  it('keeps the Championship Sidebar visible and unreset across every filter tab', async () => {
+    mockSchedule([pastRace, nextRace, futureRace])
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(/Next race:/)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('complementary', { name: 'Championship standings' })).toBeInTheDocument(),
+    )
+    // Scoped to the sidebar landmark: RaceWeekendCard also renders driver
+    // names in its own standings preview until Story 7.4 removes it, so an
+    // unscoped query would match more than one element on this page today.
+    const sidebar = () => screen.getByRole('complementary', { name: 'Championship standings' })
+    expect(within(sidebar()).getByText(sampleDriverStandings[0].driverName)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Past' }))
+    expect(within(sidebar()).getByText(sampleDriverStandings[0].driverName)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'All' }))
+    expect(within(sidebar()).getByText(sampleDriverStandings[0].driverName)).toBeInTheDocument()
   })
 
   it('shows a clear error message when the schedule request fails', async () => {

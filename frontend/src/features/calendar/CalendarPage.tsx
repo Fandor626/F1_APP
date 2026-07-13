@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useRaceSchedule, type RaceWeekend } from '../../shared/api/ergast'
 import { StreakCounter } from '../fan-engagement'
+import { ChampionshipSidebar } from './ChampionshipSidebar'
 import { RaceFilterTabs, type RaceFilter } from './RaceFilterTabs'
 import { RaceWeekendCard } from './RaceWeekendCard'
 
@@ -74,16 +75,22 @@ export function CalendarPage() {
 
       <RaceFilterTabs value={filter} onChange={setFilter} />
 
-      {isPending && <CalendarSkeleton />}
-      {isError && (
-        <p role="alert" className="text-[13px] text-text-secondary">
-          Couldn't reach the server — try refreshing.
-        </p>
-      )}
-      {filteredRaces && filteredRaces.length === 0 && (
-        <p className="text-[13px] text-text-secondary">No races scheduled yet.</p>
-      )}
-      {filteredRaces && filteredRaces.length > 0 && <Schedule races={filteredRaces} />}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[250px_1fr]">
+        <ChampionshipSidebar />
+
+        <div>
+          {isPending && <CalendarSkeleton />}
+          {isError && (
+            <p role="alert" className="text-[13px] text-text-secondary">
+              Couldn't reach the server — try refreshing.
+            </p>
+          )}
+          {filteredRaces && filteredRaces.length === 0 && (
+            <p className="text-[13px] text-text-secondary">No races scheduled yet.</p>
+          )}
+          {filteredRaces && filteredRaces.length > 0 && <Schedule races={filteredRaces} />}
+        </div>
+      </div>
     </div>
   )
 }
