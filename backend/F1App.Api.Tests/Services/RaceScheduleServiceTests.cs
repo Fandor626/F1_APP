@@ -52,6 +52,19 @@ public class RaceScheduleServiceTests
         return new StandingsService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()));
     }
 
+    // Mocks GetCircuitInfoAsync to null for any circuitId, so
+    // CircuitProfileService.ComputeAsync short-circuits before needing
+    // GetAllCircuitResultsAsync stubbed too — gives tests that don't care
+    // about lap records a profile service that resolves cleanly to null.
+    private static CircuitProfileService EmptyCircuitProfileService()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCircuitInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ErgastCircuitDto?)null);
+        return new CircuitProfileService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()));
+    }
+
     [Fact]
     public async Task GetCurrentSeasonScheduleAsync_SortsRacesChronologically()
     {
@@ -65,7 +78,7 @@ public class RaceScheduleServiceTests
                 Race("2", "2026-05-24", "Second Race"),
             }));
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var schedule = await service.GetCurrentSeasonScheduleAsync(CancellationToken.None);
 
@@ -80,7 +93,7 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08") }));
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         await service.GetCurrentSeasonScheduleAsync(CancellationToken.None);
         await service.GetCurrentSeasonScheduleAsync(CancellationToken.None);
@@ -96,7 +109,7 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08") }));
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var schedule = await service.GetCurrentSeasonScheduleAsync(CancellationToken.None);
 
@@ -114,7 +127,7 @@ public class RaceScheduleServiceTests
                 Race("1", "2026-03-08", firstPractice: new ErgastSessionDto("2026-03-06", "01:30:00Z")),
             }));
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var schedule = await service.GetCurrentSeasonScheduleAsync(CancellationToken.None);
 
@@ -129,12 +142,60 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08") }));
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var schedule = await service.GetCurrentSeasonScheduleAsync(CancellationToken.None);
 
         Assert.Equal(schedule[0].RaceStart, schedule[0].WeekendStart);
     }
+
+    [Fact]
+    public async Task GetCurrentSeasonScheduleAsync_PopulatesAllTimeAndRecentLapRecordsFromCircuitProfile()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08") }));
+        ergastClient
+            .Setup(c => c.GetCircuitInfoAsync("circuit", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastCircuitDto("circuit", "Circuit Name", new ErgastLocationDto("City", "Country")));
+        ergastClient
+            .Setup(c => c.GetAllCircuitResultsAsync("circuit", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                new ErgastRaceResultRaceDto("Grand Prix", "1", "2024-01-01", [
+                    Result("Hamilton", "Mercedes", "1", fastestLapRank: "1", fastestLapTime: "1:20.000"),
+                ], "2024"),
+                new ErgastRaceResultRaceDto("Grand Prix", "1", "2025-01-01", [
+                    Result("Verstappen", "Red Bull", "1", fastestLapRank: "1", fastestLapTime: "1:21.500"),
+                ], "2025"),
+            });
+
+        var circuitProfileService = new CircuitProfileService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()));
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), circuitProfileService);
+
+        var schedule = await service.GetCurrentSeasonScheduleAsync(CancellationToken.None);
+
+        Assert.NotNull(schedule[0].AllTimeLapRecord);
+        Assert.Equal("Given Hamilton", schedule[0].AllTimeLapRecord!.DriverName);
+        Assert.Equal(2024, schedule[0].AllTimeLapRecord!.Season);
+
+        Assert.NotNull(schedule[0].RecentLapRecord);
+        Assert.Equal("Given Verstappen", schedule[0].RecentLapRecord!.DriverName);
+        Assert.Equal(2025, schedule[0].RecentLapRecord!.Season);
+    }
+
+    private static ErgastResultDto Result(string driverId, string constructorName, string position, string? fastestLapRank = null, string? fastestLapTime = null) =>
+        new(
+            new ErgastDriverDto(driverId, "Given", driverId),
+            new ErgastConstructorDto("cid", constructorName),
+            null,
+            position,
+            null,
+            "Finished",
+            "25",
+            "1",
+            fastestLapRank is null ? null : new ErgastFastestLapDto(fastestLapRank, new ErgastResultTimeDto(fastestLapTime!)));
 
     [Fact]
     public async Task GetRaceDetailAsync_StandardWeekend_OrdersFp1Fp2Fp3QualifyingRace()
@@ -156,7 +217,7 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCircuitResultsAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var detail = await service.GetRaceDetailAsync(1, CancellationToken.None);
 
@@ -184,7 +245,7 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCircuitResultsAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var detail = await service.GetRaceDetailAsync(2, CancellationToken.None);
 
@@ -202,7 +263,7 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08") }));
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var detail = await service.GetRaceDetailAsync(999, CancellationToken.None);
 
@@ -223,7 +284,7 @@ public class RaceScheduleServiceTests
                 new ErgastConstructorDto("mclaren", "McLaren"),
                 new ErgastResultTimeDto("1:35:39.435"))]);
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var detail = await service.GetRaceDetailAsync(1, CancellationToken.None);
 
@@ -244,7 +305,7 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCircuitResultsAsync(2025, "circuit", It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var detail = await service.GetRaceDetailAsync(1, CancellationToken.None);
 
@@ -262,7 +323,7 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCircuitResultsAsync(2025, "circuit", It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         await service.GetRaceDetailAsync(1, CancellationToken.None);
         await service.GetRaceDetailAsync(1, CancellationToken.None);
@@ -287,7 +348,7 @@ public class RaceScheduleServiceTests
             DriverStandingDto("2", "Verstappen", "289"),
             DriverStandingDto("1", "Norris", "312"));
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), standingsService);
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), standingsService, EmptyCircuitProfileService());
 
         var detail = await service.GetRaceDetailAsync(1, CancellationToken.None);
 
@@ -308,7 +369,7 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCircuitResultsAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var detail = await service.GetRaceDetailAsync(1, CancellationToken.None);
 
@@ -334,7 +395,7 @@ public class RaceScheduleServiceTests
             .Setup(c => c.GetCircuitResultsAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService());
+        var service = new RaceScheduleService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()), EmptyStandingsService(), EmptyCircuitProfileService());
 
         var detail = await service.GetRaceDetailAsync(1, CancellationToken.None);
 

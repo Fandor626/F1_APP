@@ -2,6 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { queryKeys } from './queryKeys'
 
+const LapRecordSchema = z.object({
+  driverName: z.string(),
+  constructorName: z.string(),
+  time: z.string(),
+  season: z.number(),
+})
+
 const RaceWeekendSchema = z.object({
   season: z.number(),
   round: z.number(),
@@ -12,6 +19,11 @@ const RaceWeekendSchema = z.object({
   country: z.string(),
   weekendStart: z.string(),
   raceStart: z.string(),
+  // `.nullable().optional()`, not just `.nullable()`: the backend's global
+  // JsonIgnoreCondition.WhenWritingNull omits null fields from the response
+  // entirely rather than sending them as `null` — the key may be absent.
+  allTimeLapRecord: LapRecordSchema.nullable().optional(),
+  recentLapRecord: LapRecordSchema.nullable().optional(),
 })
 
 const RaceScheduleSchema = z.array(RaceWeekendSchema)
@@ -267,13 +279,6 @@ export function useWinProbability(round: number) {
     retry: false,
   })
 }
-
-const LapRecordSchema = z.object({
-  driverName: z.string(),
-  constructorName: z.string(),
-  time: z.string(),
-  season: z.number(),
-})
 
 const CircuitWinnerSchema = z.object({
   season: z.number(),

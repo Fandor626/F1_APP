@@ -6,7 +6,11 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace F1App.Api.Services;
 
-public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache, StandingsService standingsService)
+public class RaceScheduleService(
+    IErgastClient ergastClient,
+    IMemoryCache cache,
+    StandingsService standingsService,
+    CircuitProfileService circuitProfileService)
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(24);
 
@@ -53,8 +57,19 @@ public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache,
     {
         var races = await GetCachedRacesAsync(cancellationToken);
 
+        // Fetch each distinct circuit's profile (all-time + recent-year lap
+        // records) in parallel rather than per-race sequentially — a season
+        // has ~24 races but never more distinct circuits than that, and
+        // CircuitProfileService's own 7-day cache makes repeat calls free
+        // after the first computation.
+        var circuitIds = races.Select(r => r.Circuit.CircuitId).Distinct().ToList();
+        var profileTasks = circuitIds.ToDictionary(
+            id => id,
+            id => circuitProfileService.GetCircuitProfileAsync(id, cancellationToken));
+        await Task.WhenAll(profileTasks.Values);
+
         return races
-            .Select(ToSummary)
+            .Select(race => ToSummary(race, profileTasks[race.Circuit.CircuitId].Result))
             .OrderBy(race => race.RaceStart)
             .ToList();
     }
@@ -157,7 +172,7 @@ public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache,
         return raceTable.Races;
     }
 
-    private static RaceWeekendSummary ToSummary(ErgastRaceDto race)
+    private static RaceWeekendSummary ToSummary(ErgastRaceDto race, CircuitProfile? profile)
     {
         var raceStart = CombineDateAndTime(race.Date, race.Time);
         var weekendStart = race.FirstPractice is null
@@ -173,7 +188,9 @@ public class RaceScheduleService(IErgastClient ergastClient, IMemoryCache cache,
             race.Circuit.Location.Locality,
             race.Circuit.Location.Country,
             weekendStart,
-            raceStart);
+            raceStart,
+            profile?.LapRecord,
+            profile?.RecentLapRecord);
     }
 
     private static RaceWeekendDetail ToDetail(ErgastRaceDto race, CircuitPriorWinner? priorYearWinner, ChampionshipDelta? championshipDelta) =>

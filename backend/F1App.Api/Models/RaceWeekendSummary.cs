@@ -9,4 +9,6 @@ public record RaceWeekendSummary(
     string Locality,
     string Country,
     DateTimeOffset WeekendStart,
-    DateTimeOffset RaceStart);
+    DateTimeOffset RaceStart,
+    LapRecord? AllTimeLapRecord,
+    LapRecord? RecentLapRecord);

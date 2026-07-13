@@ -35,7 +35,7 @@ public class CircuitProfileService(IErgastClient ergastClient, IMemoryCache cach
         {
             return new CircuitProfile(
                 circuitId, circuitInfo.CircuitName, circuitInfo.Location.Locality,
-                circuitInfo.Location.Country, 0, null, [], stats);
+                circuitInfo.Location.Country, 0, null, null, [], stats);
         }
 
         var firstSeason = races.Min(r => int.Parse(r.Season, CultureInfo.InvariantCulture));
@@ -51,10 +51,11 @@ public class CircuitProfileService(IErgastClient ergastClient, IMemoryCache cach
             .ToList();
 
         var lapRecord = FindLapRecord(races);
+        var recentLapRecord = FindRecentLapRecord(races);
 
         return new CircuitProfile(
             circuitId, circuitInfo.CircuitName, circuitInfo.Location.Locality,
-            circuitInfo.Location.Country, firstSeason, lapRecord, winners, stats);
+            circuitInfo.Location.Country, firstSeason, lapRecord, recentLapRecord, winners, stats);
     }
 
     internal static LapRecord? FindLapRecord(IReadOnlyList<ErgastRaceResultRaceDto> races)
@@ -79,6 +80,18 @@ public class CircuitProfileService(IErgastClient ergastClient, IMemoryCache cach
             }
         }
         return best;
+    }
+
+    // FR-4/FR-14's "current or most recently completed year" fastest lap —
+    // the most recent season this circuit has raced in (not necessarily the
+    // live current season, if this circuit hasn't run yet this year), scoped
+    // to just that one season's race(s) at this circuit. Reuses the same
+    // races list FindLapRecord scans — no extra Ergast call.
+    internal static LapRecord? FindRecentLapRecord(IReadOnlyList<ErgastRaceResultRaceDto> races)
+    {
+        var mostRecentSeason = races.Max(r => int.Parse(r.Season, CultureInfo.InvariantCulture));
+        var recentRaces = races.Where(r => int.Parse(r.Season, CultureInfo.InvariantCulture) == mostRecentSeason).ToList();
+        return FindLapRecord(recentRaces);
     }
 
     // Ergast lap times are "m:ss.fff" (no hour component — no F1 lap has ever

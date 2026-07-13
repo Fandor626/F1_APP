@@ -13,5 +13,6 @@ public record CircuitProfile(
     string Country,
     int FirstF1Season,
     LapRecord? LapRecord,
+    LapRecord? RecentLapRecord,
     IReadOnlyList<CircuitWinner> PastWinners,
     CircuitStats? Stats);
