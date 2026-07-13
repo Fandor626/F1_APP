@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HttpResponse, http } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
@@ -62,6 +62,10 @@ const futureRace: RaceWeekend = {
   raceStart: new Date(now + 60 * DAY_MS).toISOString(),
 }
 
+function mockSchedule(races: RaceWeekend[]) {
+  server.use(http.get(`${API_BASE_URL}/api/races`, () => HttpResponse.json(races)))
+}
+
 describe('CalendarPage', () => {
   it('shows a skeleton while the schedule is loading', () => {
     renderPage()
@@ -70,16 +74,47 @@ describe('CalendarPage', () => {
     expect(screen.queryByText('Next race')).not.toBeInTheDocument()
   })
 
-  it('pins the soonest upcoming race and lists every other race chronologically below it', async () => {
-    server.use(
-      http.get(`${API_BASE_URL}/api/races`, () =>
-        HttpResponse.json([pastRace, nextRace, futureRace]),
-      ),
-    )
+  it('defaults to the Future filter: pins the next race and hides past races', async () => {
+    mockSchedule([pastRace, nextRace, futureRace])
 
     renderPage()
 
     await waitFor(() => expect(screen.getByText(/Next race:/)).toBeInTheDocument())
+
+    expect(screen.getByRole('tab', { name: 'Future' })).toHaveAttribute('aria-selected', 'true')
+
+    const nextSection = screen.getByRole('heading', { name: 'Next race' }).closest('section')!
+    expect(within(nextSection).getByText('Next Race')).toBeInTheDocument()
+
+    const restSection = screen.getByRole('heading', { name: 'Season schedule' }).closest('section')!
+    const restCards = within(restSection).getAllByTestId('race-weekend-card')
+    expect(restCards).toHaveLength(1)
+    expect(within(restCards[0]).getByText('Future Race')).toBeInTheDocument()
+    expect(screen.queryByText('Past Race')).not.toBeInTheDocument()
+  })
+
+  it('shows only completed races when the Past filter is selected, with no pinned next race', async () => {
+    mockSchedule([pastRace, nextRace, futureRace])
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(/Next race:/)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Past' }))
+
+    expect(screen.queryByRole('heading', { name: 'Next race' })).not.toBeInTheDocument()
+    const restSection = screen.getByRole('heading', { name: 'Season schedule' }).closest('section')!
+    const restCards = within(restSection).getAllByTestId('race-weekend-card')
+    expect(restCards).toHaveLength(1)
+    expect(within(restCards[0]).getByText('Past Race')).toBeInTheDocument()
+  })
+
+  it('shows the full unfiltered season when the All filter is selected', async () => {
+    mockSchedule([pastRace, nextRace, futureRace])
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(/Next race:/)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('tab', { name: 'All' }))
 
     const nextSection = screen.getByRole('heading', { name: 'Next race' }).closest('section')!
     expect(within(nextSection).getByText('Next Race')).toBeInTheDocument()
@@ -89,6 +124,26 @@ describe('CalendarPage', () => {
     expect(restCards).toHaveLength(2)
     expect(within(restCards[0]).getByText('Past Race')).toBeInTheDocument()
     expect(within(restCards[1]).getByText('Future Race')).toBeInTheDocument()
+  })
+
+  it('moves selection between filter tabs with arrow keys, wrapping at the ends', async () => {
+    mockSchedule([pastRace, nextRace, futureRace])
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(/Next race:/)).toBeInTheDocument())
+
+    const futureTab = screen.getByRole('tab', { name: 'Future' })
+    futureTab.focus()
+
+    fireEvent.keyDown(futureTab, { key: 'ArrowRight' })
+    const pastTab = screen.getByRole('tab', { name: 'Past' })
+    expect(pastTab).toHaveAttribute('aria-selected', 'true')
+    expect(pastTab).toHaveFocus()
+
+    fireEvent.keyDown(pastTab, { key: 'ArrowRight' })
+    const allTab = screen.getByRole('tab', { name: 'All' })
+    expect(allTab).toHaveAttribute('aria-selected', 'true')
+    expect(allTab).toHaveFocus()
   })
 
   it('shows a clear error message when the schedule request fails', async () => {

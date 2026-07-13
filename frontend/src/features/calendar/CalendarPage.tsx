@@ -1,11 +1,19 @@
+import { useState } from 'react'
 import { useRaceSchedule, type RaceWeekend } from '../../shared/api/ergast'
 import { StreakCounter } from '../fan-engagement'
+import { RaceFilterTabs, type RaceFilter } from './RaceFilterTabs'
 import { RaceWeekendCard } from './RaceWeekendCard'
 
 function splitSchedule(races: RaceWeekend[], now: Date) {
   const next = races.find((race) => new Date(race.raceStart) >= now)
   const rest = next ? races.filter((race) => race !== next) : races
   return { next, rest }
+}
+
+function filterSchedule(races: RaceWeekend[], filter: RaceFilter, now: Date): RaceWeekend[] {
+  if (filter === 'future') return races.filter((race) => new Date(race.raceStart) >= now)
+  if (filter === 'past') return races.filter((race) => new Date(race.raceStart) < now)
+  return races
 }
 
 function CalendarSkeleton() {
@@ -52,6 +60,9 @@ function Schedule({ races }: { races: RaceWeekend[] }) {
 
 export function CalendarPage() {
   const { data, isPending, isError } = useRaceSchedule()
+  const [filter, setFilter] = useState<RaceFilter>('future')
+
+  const filteredRaces = data ? filterSchedule(data, filter, new Date()) : undefined
 
   return (
     <div className="mx-auto max-w-[1100px] px-7 py-8 pb-16">
@@ -61,16 +72,18 @@ export function CalendarPage() {
       </div>
       <p className="mb-7 text-[13px] text-text-secondary">Season schedule. Next race highlighted.</p>
 
+      <RaceFilterTabs value={filter} onChange={setFilter} />
+
       {isPending && <CalendarSkeleton />}
       {isError && (
         <p role="alert" className="text-[13px] text-text-secondary">
           Couldn't reach the server — try refreshing.
         </p>
       )}
-      {data && data.length === 0 && (
+      {filteredRaces && filteredRaces.length === 0 && (
         <p className="text-[13px] text-text-secondary">No races scheduled yet.</p>
       )}
-      {data && data.length > 0 && <Schedule races={data} />}
+      {filteredRaces && filteredRaces.length > 0 && <Schedule races={filteredRaces} />}
     </div>
   )
 }
