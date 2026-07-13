@@ -167,4 +167,48 @@ describe('ReplayBar', () => {
   // exercise it directly. What IS verified above: the element is a real
   // native range input with the correct min/max/step, which is exactly what
   // makes that native keyboard behavior apply in an actual browser.
+
+  it('defaults to 1x speed, visually indicated as active', () => {
+    render(<ReplayBar season={2026} round={16} />)
+
+    expect(screen.getByTestId('replay-speed-1x')).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('replay-speed-2x')).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByTestId('replay-speed-4x')).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('selecting a speed updates the store and the active indicator, without resetting the lap', () => {
+    useReplayStore.setState({ currentLapIndex: 3, isPlaying: true })
+    render(<ReplayBar season={2026} round={16} />)
+
+    fireEvent.click(screen.getByTestId('replay-speed-4x'))
+
+    expect(useReplayStore.getState().speed).toBe(4)
+    expect(screen.getByTestId('replay-speed-4x')).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('replay-speed-1x')).toHaveAttribute('aria-selected', 'false')
+    // AC 1: "advances at that rate without restarting" — lap position and
+    // play state are untouched by a speed change.
+    expect(useReplayStore.getState().currentLapIndex).toBe(3)
+    expect(useReplayStore.getState().isPlaying).toBe(true)
+  })
+
+  it('the mobile overflow toggle reveals and hides Restart + the speed group', () => {
+    render(<ReplayBar season={2026} round={16} />)
+
+    const toggle = screen.getByTestId('replay-overflow-toggle')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  // Note: which of "always visible" (desktop) vs. "hidden until the overflow
+  // toggle is open" (mobile) actually applies is decided by the md: CSS
+  // breakpoint at real render time — jsdom has no viewport to evaluate that
+  // against, so this suite can't assert which state wins at a given width.
+  // What IS verified above: Restart and the speed group are present exactly
+  // once each (no duplicated markup/test ids across a desktop/mobile split),
+  // and the overflow toggle's own open/close state genuinely works.
 })
