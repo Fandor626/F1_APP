@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReplayBar } from './ReplayBar'
 import { useReplayStore } from '../store/replayStore'
 import { useLiveRaceStore } from '../store/liveRaceStore'
@@ -39,6 +39,14 @@ beforeEach(() => {
   // this default, a later test's mockReturnValue([...]) leaks into whichever
   // test runs next, since it's the same module-mocked function instance.
   vi.mocked(useRaceReplayQuery).mockReturnValue({ data: undefined } as never)
+  // document.hidden is a getter with no setter by default in jsdom — tests
+  // that override it via defineProperty must reset it here, or `hidden: true`
+  // leaks into the next test the same way a stale mockReturnValue would.
+  Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('ReplayBar', () => {
@@ -211,4 +219,74 @@ describe('ReplayBar', () => {
   // What IS verified above: Restart and the speed group are present exactly
   // once each (no duplicated markup/test ids across a desktop/mobile split),
   // and the overflow toggle's own open/close state genuinely works.
+
+  it('clicking pause halts playback and stops the lap index from advancing further', async () => {
+    vi.useFakeTimers()
+    const { useRaceReplayQuery } = await import('../hooks/useRaceReplayQuery')
+    vi.mocked(useRaceReplayQuery).mockReturnValue({
+      data: [makeFrame(1, 44), makeFrame(2, 44), makeFrame(3, 44)],
+    } as never)
+
+    render(<ReplayBar season={2026} round={16} />)
+    fireEvent.click(screen.getByTestId('replay-play-pause'))
+
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(useReplayStore.getState().currentLapIndex).toBe(1)
+
+    fireEvent.click(screen.getByTestId('replay-play-pause'))
+    act(() => { vi.advanceTimersByTime(9000) })
+    expect(useReplayStore.getState().currentLapIndex).toBe(1)
+  })
+
+  it('clicking play again after pause resumes from exactly the paused lap', async () => {
+    vi.useFakeTimers()
+    const { useRaceReplayQuery } = await import('../hooks/useRaceReplayQuery')
+    vi.mocked(useRaceReplayQuery).mockReturnValue({
+      data: [makeFrame(1, 44), makeFrame(2, 44), makeFrame(3, 44), makeFrame(4, 44)],
+    } as never)
+
+    render(<ReplayBar season={2026} round={16} />)
+    fireEvent.click(screen.getByTestId('replay-play-pause'))
+
+    act(() => { vi.advanceTimersByTime(6000) })
+    expect(useReplayStore.getState().currentLapIndex).toBe(2)
+
+    fireEvent.click(screen.getByTestId('replay-play-pause'))
+    fireEvent.click(screen.getByTestId('replay-play-pause'))
+
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(useReplayStore.getState().currentLapIndex).toBe(3)
+  })
+
+  it('backgrounding the tab while playing auto-pauses at the current lap', async () => {
+    const { useRaceReplayQuery } = await import('../hooks/useRaceReplayQuery')
+    vi.mocked(useRaceReplayQuery).mockReturnValue({
+      data: [makeFrame(1, 44), makeFrame(2, 44), makeFrame(3, 44)],
+    } as never)
+    useReplayStore.setState({ isPlaying: true, currentLapIndex: 1 })
+
+    render(<ReplayBar season={2026} round={16} />)
+
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+    fireEvent(document, new Event('visibilitychange'))
+
+    expect(useReplayStore.getState().isPlaying).toBe(false)
+    expect(useReplayStore.getState().currentLapIndex).toBe(1)
+  })
+
+  it('backgrounding the tab while already paused leaves state unchanged', async () => {
+    const { useRaceReplayQuery } = await import('../hooks/useRaceReplayQuery')
+    vi.mocked(useRaceReplayQuery).mockReturnValue({
+      data: [makeFrame(1, 44), makeFrame(2, 44)],
+    } as never)
+    useReplayStore.setState({ isPlaying: false, currentLapIndex: 1 })
+
+    render(<ReplayBar season={2026} round={16} />)
+
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+    fireEvent(document, new Event('visibilitychange'))
+
+    expect(useReplayStore.getState().isPlaying).toBe(false)
+    expect(useReplayStore.getState().currentLapIndex).toBe(1)
+  })
 })

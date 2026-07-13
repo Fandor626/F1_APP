@@ -70,6 +70,23 @@ export function ReplayBar({ season, round }: ReplayBarProps) {
     return () => window.clearInterval(interval)
   }, [isPlaying, frames, speed])
 
+  // Backgrounding the tab while playing auto-pauses (AC 3, Story 8.5) — rather
+  // than relying on browsers' undocumented setInterval throttling in hidden
+  // tabs to eventually stop advancing, this deterministically pauses so a
+  // returning user finds the replay exactly where they left it, never having
+  // silently jumped ahead while they weren't looking. Reads fresh state via
+  // getState() rather than closing over stale values, matching the ticking
+  // effect's own pattern above. Returning to the tab does not auto-resume.
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.hidden && useReplayStore.getState().isPlaying) {
+        useReplayStore.getState().pause()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   function handlePlayPause() {
     if (!hasStarted) setHasStarted(true)
     if (isPlaying) pause()
