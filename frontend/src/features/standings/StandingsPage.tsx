@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FanCardPromptModal } from '../fan-engagement'
 import { ConstructorsStandingsTable } from './ConstructorsStandingsTable'
 import { DriversStandingsTable } from './DriversStandingsTable'
 import { SeasonWrapped } from './SeasonWrapped/SeasonWrapped'
@@ -11,6 +12,7 @@ export function StandingsPage() {
 
   return (
     <div className="mx-auto max-w-[1100px] px-7 py-8 pb-16">
+      <FanCardPromptModal />
       <h1 className="mb-1 text-[26px] font-bold tracking-[-0.01em] text-text-primary">Standings</h1>
       <p className="mb-7 text-[13px] text-text-secondary">Drivers' and Constructors' Championships.</p>
 

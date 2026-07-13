@@ -2,8 +2,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HttpResponse, http } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { StandingsPage } from './StandingsPage'
+import { useFanCardStore } from '../fan-engagement/useFanCardStore'
 import { server } from '../../shared/test/server'
 import { sampleConstructorStandings, sampleDriverStandings } from '../../shared/mocks/handlers/ergastHandlers'
 
@@ -36,7 +37,24 @@ function renderPage() {
   )
 }
 
+beforeEach(() => {
+  window.localStorage.clear()
+  useFanCardStore.setState({
+    driverId: null,
+    driverName: null,
+    constructorName: null,
+    circuitId: null,
+    circuitName: null,
+  })
+})
+
 describe('StandingsPage', () => {
+  it('shows the Fan Card creation prompt when there are zero fan card picks', () => {
+    renderPage()
+
+    expect(screen.getByRole('dialog', { name: 'Create your Fan Card' })).toBeInTheDocument()
+  })
+
   it('renders every driver in a real table by default', async () => {
     renderPage()
 
