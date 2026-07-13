@@ -99,7 +99,12 @@ public class RaceScheduleService(
             })
             .ToList();
 
-        var lastResult = new LastRaceResult(raceData.RaceName, raceData.Date, drivers);
+        var lastResult = new LastRaceResult(
+            raceData.RaceName,
+            raceData.Date,
+            drivers,
+            int.Parse(raceData.Season, CultureInfo.InvariantCulture),
+            int.Parse(raceData.Round, CultureInfo.InvariantCulture));
         cache.Set(CacheKeys.LastRaceResult, lastResult, ResultsCacheTtl);
         return lastResult;
     }

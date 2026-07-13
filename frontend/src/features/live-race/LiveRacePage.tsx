@@ -4,6 +4,7 @@ import { LapTimeChart } from './LapTimeChart/LapTimeChart'
 import { TrackMap } from './TrackMap/TrackMap'
 import { FastestSectorBoard } from './FastestSectorBoard/FastestSectorBoard'
 import { RaceEventTimeline } from './RaceEventTimeline/RaceEventTimeline'
+import { ReplayBar } from './ReplayBar/ReplayBar'
 import { useSignalRConnection } from './hooks/useSignalRConnection'
 import { useFallbackState } from './hooks/useFallbackState'
 import { useLastRaceResult } from './hooks/useLastRaceResult'
@@ -25,7 +26,12 @@ export function LiveRacePage() {
 
   const hasLiveData = Object.keys(drivers).length > 0
 
-  const { data: lastRaceData, isFetched: lastRaceFetched } = useLastRaceResult({ enabled: isFallback && !hasLiveData })
+  // Enabled whenever fallback (not just "no live data yet"): the Replay bar
+  // needs season/round regardless of whether SignalR or this REST call ends
+  // up being the one that actually populates the driver list below — SignalR
+  // can win that race before this query ever fires otherwise, leaving
+  // season/round unavailable for the whole fallback session.
+  const { data: lastRaceData, isFetched: lastRaceFetched } = useLastRaceResult({ enabled: isFallback })
   const { data: schedule } = useRaceSchedule()
 
   useEffect(() => {
@@ -55,8 +61,12 @@ export function LiveRacePage() {
     )
   }
 
+  // Replay is only meaningful once there's a real fallback race with a known
+  // season/round to fetch — not during live/stale sessions.
+  const showReplayBar = isFallback && hasLiveData && lastRaceData
+
   return (
-    <div className="min-h-screen bg-[#14171c] text-[#eef0f3] p-4">
+    <div className={`min-h-screen bg-[#14171c] text-[#eef0f3] p-4 ${showReplayBar ? 'pb-[92px]' : ''}`}>
       <h1 className="text-[26px] font-bold tracking-[-0.01em] mb-4">Live Race</h1>
       {isFallback && (
         <div
@@ -81,6 +91,7 @@ export function LiveRacePage() {
         <TrackMap circuitId={circuitId} />
         <LapTimeChart />
       </div>
+      {showReplayBar && <ReplayBar season={lastRaceData.season} round={lastRaceData.round} />}
     </div>
   )
 }

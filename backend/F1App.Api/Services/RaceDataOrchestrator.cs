@@ -245,7 +245,7 @@ public class RaceDataOrchestrator(
 
             foreach (var msg in messages)
             {
-                var evt = ParseRaceControlEvent(msg);
+                var evt = ParseRaceControlEvent(msg, _driverInfo);
                 if (evt is not null)
                     _timelineEvents.Enqueue(evt);
             }
@@ -258,14 +258,16 @@ public class RaceDataOrchestrator(
     // two); CarEvent-category messages read like "CAR 44 (HAM) STOPPED AT TURN 10"
     // for retirements/mechanical stops, with driver_number null on the DTO itself —
     // the car number only appears in the free-text message.
-    // driverInfo defaults to the live-populated _driverInfo; historical
-    // fallback enrichment passes an explicit override for the past session's
-    // own driver roster (Story 8.1) — never mixes the two.
-    internal RaceTimelineEvent? ParseRaceControlEvent(
+    // Static and driverInfo-explicit (no implicit _driverInfo fallback) so
+    // both live polling (passes _driverInfo) and historical enrichment —
+    // Story 8.1's fallback snapshot and Story 8.2's RaceReplayService, each
+    // passing that specific past session's own driver roster — can call this
+    // without needing a RaceDataOrchestrator instance or risking the two
+    // driver rosters mixing.
+    internal static RaceTimelineEvent? ParseRaceControlEvent(
         OpenF1RaceControlDto msg,
-        IReadOnlyDictionary<int, OpenF1DriverInfoDto>? driverInfo = null)
+        IReadOnlyDictionary<int, OpenF1DriverInfoDto> drivers)
     {
-        var drivers = driverInfo ?? _driverInfo;
         var lapNumber = msg.LapNumber ?? 0;
         var message = msg.Message ?? "";
         var upper = message.ToUpperInvariant();

@@ -55,6 +55,7 @@ builder.Services.AddHttpClient<IOpenF1Client, OpenF1Client>(client =>
 });
 
 builder.Services.AddScoped<RaceScheduleService>();
+builder.Services.AddScoped<RaceReplayService>();
 builder.Services.AddScoped<StandingsService>();
 builder.Services.AddScoped<SeasonWrappedService>();
 builder.Services.AddScoped<WinProbabilityService>();

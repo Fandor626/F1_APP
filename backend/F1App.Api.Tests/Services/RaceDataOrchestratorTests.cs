@@ -921,7 +921,7 @@ public class RaceDataOrchestratorTests
     public void ParseRaceControlEvent_VirtualSafetyCarDeployed_ReturnsVirtualSafetyCarEvent()
     {
         var sut = CreateOrchestrator();
-        var evt = sut.ParseRaceControlEvent(MakeRaceControl(17, "SafetyCar", null, "VIRTUAL SAFETY CAR DEPLOYED"));
+        var evt = RaceDataOrchestrator.ParseRaceControlEvent(MakeRaceControl(17, "SafetyCar", null, "VIRTUAL SAFETY CAR DEPLOYED"), sut._driverInfo);
 
         Assert.NotNull(evt);
         Assert.Equal("VirtualSafetyCar", evt!.EventType);
@@ -932,7 +932,7 @@ public class RaceDataOrchestratorTests
     public void ParseRaceControlEvent_SafetyCarDeployed_ReturnsSafetyCarEvent()
     {
         var sut = CreateOrchestrator();
-        var evt = sut.ParseRaceControlEvent(MakeRaceControl(30, "SafetyCar", null, "SAFETY CAR DEPLOYED"));
+        var evt = RaceDataOrchestrator.ParseRaceControlEvent(MakeRaceControl(30, "SafetyCar", null, "SAFETY CAR DEPLOYED"), sut._driverInfo);
 
         Assert.NotNull(evt);
         Assert.Equal("SafetyCar", evt!.EventType);
@@ -942,7 +942,7 @@ public class RaceDataOrchestratorTests
     public void ParseRaceControlEvent_SafetyCarEnding_ReturnsNull()
     {
         var sut = CreateOrchestrator();
-        var evt = sut.ParseRaceControlEvent(MakeRaceControl(18, "SafetyCar", null, "VIRTUAL SAFETY CAR ENDING"));
+        var evt = RaceDataOrchestrator.ParseRaceControlEvent(MakeRaceControl(18, "SafetyCar", null, "VIRTUAL SAFETY CAR ENDING"), sut._driverInfo);
 
         Assert.Null(evt);
     }
@@ -951,7 +951,7 @@ public class RaceDataOrchestratorTests
     public void ParseRaceControlEvent_RedFlag_ReturnsRedFlagEvent()
     {
         var sut = CreateOrchestrator();
-        var evt = sut.ParseRaceControlEvent(MakeRaceControl(10, "Flag", "RED", "RED FLAG"));
+        var evt = RaceDataOrchestrator.ParseRaceControlEvent(MakeRaceControl(10, "Flag", "RED", "RED FLAG"), sut._driverInfo);
 
         Assert.NotNull(evt);
         Assert.Equal("RedFlag", evt!.EventType);
@@ -965,7 +965,8 @@ public class RaceDataOrchestratorTests
         {
             [44] = new(44, "HAM", "Mercedes", "00D2BE"),
         };
-        var evt = sut.ParseRaceControlEvent(MakeRaceControl(17, "CarEvent", null, "CAR 44 (HAM) STOPPED AT TURN 10"));
+        var evt = RaceDataOrchestrator.ParseRaceControlEvent(
+            MakeRaceControl(17, "CarEvent", null, "CAR 44 (HAM) STOPPED AT TURN 10"), sut._driverInfo);
 
         Assert.NotNull(evt);
         Assert.Equal("Dnf", evt!.EventType);
@@ -976,7 +977,7 @@ public class RaceDataOrchestratorTests
     public void ParseRaceControlEvent_UnrelatedMessage_ReturnsNull()
     {
         var sut = CreateOrchestrator();
-        var evt = sut.ParseRaceControlEvent(MakeRaceControl(1, "Drs", null, "DRS DISABLED"));
+        var evt = RaceDataOrchestrator.ParseRaceControlEvent(MakeRaceControl(1, "Drs", null, "DRS DISABLED"), sut._driverInfo);
 
         Assert.Null(evt);
     }

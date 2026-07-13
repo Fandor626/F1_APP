@@ -6,7 +6,7 @@ namespace F1App.Api.Controllers;
 
 [ApiController]
 [Route("api/races")]
-public class RacesController(RaceScheduleService raceScheduleService) : ControllerBase
+public class RacesController(RaceScheduleService raceScheduleService, RaceReplayService raceReplayService) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<RaceWeekendSummary>>> Get(CancellationToken cancellationToken)
@@ -27,5 +27,17 @@ public class RacesController(RaceScheduleService raceScheduleService) : Controll
     {
         var result = await raceScheduleService.GetLastRaceResultAsync(cancellationToken);
         return result is null ? NoContent() : Ok(result);
+    }
+
+    // {season} is part of the route for REST/AD-2 shape consistency but isn't
+    // used in the lookup — Ergast round-result queries are already scoped to
+    // the current season implicitly, matching every other round-based lookup
+    // in this controller (GetDetail above takes no season param either).
+    [HttpGet("{season:int}/{round:int}/replay")]
+    public async Task<ActionResult<IReadOnlyList<RaceStateSnapshot>>> GetReplay(
+        int season, int round, CancellationToken cancellationToken)
+    {
+        var frames = await raceReplayService.GetReplayAsync(round, cancellationToken);
+        return frames is null ? NotFound() : Ok(frames);
     }
 }

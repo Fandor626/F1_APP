@@ -24,4 +24,6 @@ public static class CacheKeys
 
     public static string DriverStatsForComparison(string driverId, int? season, string? circuitId) =>
         $"driver:h2h-stats:{driverId}:{season?.ToString() ?? "any"}:{circuitId ?? "any"}";
+
+    public static string RaceReplay(int round) => $"races:replay:{round}";
 }

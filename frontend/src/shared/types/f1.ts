@@ -57,4 +57,6 @@ export interface LastRaceResult {
   raceName: string
   raceDate: string
   drivers: DriverState[]
+  season: number
+  round: number
 }

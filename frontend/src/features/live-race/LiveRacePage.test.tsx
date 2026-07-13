@@ -80,6 +80,8 @@ describe('LiveRacePage', () => {
       data: {
         raceName: 'Austrian Grand Prix',
         raceDate: '2026-07-06',
+        season: 2026,
+        round: 12,
         drivers: [
           {
             driverNumber: 4, driverCode: 'NOR', teamName: 'McLaren',
@@ -90,6 +92,7 @@ describe('LiveRacePage', () => {
         ],
       } as never,
       isPending: false,
+      isFetched: true,
     } as never)
 
     useLiveRaceStore.setState({ sessionMode: 'fallback', drivers: {} })
@@ -100,6 +103,37 @@ describe('LiveRacePage', () => {
       expect(Object.keys(drivers)).toHaveLength(1)
       expect(drivers['4']?.driverCode).toBe('NOR')
     })
+  })
+
+  it('shows the Replay bar once a real fallback race with drivers is loaded', async () => {
+    const { useLastRaceResult } = await import('./hooks/useLastRaceResult')
+    vi.mocked(useLastRaceResult).mockReturnValue({
+      data: { raceName: 'Austrian Grand Prix', raceDate: '2026-07-06', season: 2026, round: 12, drivers: [] } as never,
+      isPending: false,
+      isFetched: true,
+    } as never)
+
+    useLiveRaceStore.setState({
+      sessionMode: 'fallback',
+      drivers: {
+        '4': {
+          driverNumber: 4, driverCode: 'NOR', teamName: 'McLaren', teamColour: '555555',
+          position: 1, gapToCarAhead: null, gapIsStale: false, tyreCompound: null,
+          stintLaps: null, championshipDelta: null, x: null, y: null,
+          miniSectorStatus: null, pitWindowActive: false,
+        },
+      },
+    })
+    renderWithQueryClient(<LiveRacePage />)
+
+    expect(screen.getByTestId('replay-bar')).toBeInTheDocument()
+  })
+
+  it('does not show the Replay bar in live mode', () => {
+    useLiveRaceStore.setState({ sessionMode: 'live' })
+    renderWithQueryClient(<LiveRacePage />)
+
+    expect(screen.queryByTestId('replay-bar')).not.toBeInTheDocument()
   })
 
   it('shows a plain on-brand message naming the next race when zero races have completed this season', async () => {
