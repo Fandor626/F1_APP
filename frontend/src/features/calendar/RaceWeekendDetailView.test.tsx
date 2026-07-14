@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HttpResponse, http } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -141,5 +141,34 @@ describe('RaceWeekendDetailView', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Saudi Arabian Grand Prix' })).toBeInTheDocument())
     expect(screen.queryByText('Circuit History')).not.toBeInTheDocument()
+  })
+
+  it('shows the Win Prediction callout in plain language, with the raw table revealed only via its toggle', async () => {
+    server.use(
+      http.get(`${API_BASE_URL}/api/races/:round/win-probability`, () =>
+        HttpResponse.json([
+          { driverName: 'Max Verstappen', constructorName: 'Red Bull Racing', gridPosition: 1, winProbability: 38 },
+          { driverName: 'Lando Norris', constructorName: 'McLaren', gridPosition: 2, winProbability: 27 },
+        ]),
+      ),
+    )
+
+    renderDetail(1)
+
+    await waitFor(() => expect(screen.getByText('Win Prediction')).toBeInTheDocument())
+    const callout = within(screen.getByTestId('win-prediction-callout'))
+    expect(callout.getByText('Max Verstappen')).toBeInTheDocument()
+    expect(callout.queryByText(/38\.0%/)).not.toBeInTheDocument()
+
+    fireEvent.click(callout.getByRole('button', { name: /grid-by-grid win probability/ }))
+
+    expect(callout.getByText('38.0%')).toBeInTheDocument()
+  })
+
+  it('omits the Win Prediction callout when no qualifying data exists yet', async () => {
+    renderDetail(1)
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Bahrain Grand Prix' })).toBeInTheDocument())
+    expect(screen.queryByText('Win Prediction')).not.toBeInTheDocument()
   })
 })

@@ -8,7 +8,7 @@ import { ContextualData } from './ContextualData'
 import { TimezoneToggle } from './TimezoneToggle'
 import { TrackOutline } from './TrackOutline'
 import { TrackRecords } from './TrackRecords'
-import { WinProbabilityWidget } from './WinProbabilityWidget'
+import { WinPredictionCallout } from './WinPredictionCallout'
 
 function SessionsSkeleton() {
   return (
@@ -92,7 +92,7 @@ export function RaceWeekendDetailView() {
           </ul>
 
           <ContextualData priorYearWinner={data.priorYearWinner} championshipDelta={data.championshipDelta} />
-          {winProbs && winProbs.length > 0 && <WinProbabilityWidget entries={winProbs} />}
+          {winProbs && winProbs.length > 0 && <WinPredictionCallout entries={winProbs} />}
         </>
       )}
     </div>
