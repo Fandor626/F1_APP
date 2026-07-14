@@ -47,7 +47,7 @@ export function TrackMap({ circuitId }: TrackMapProps) {
       data-testid="track-map"
     >
       <div className="px-4 pt-3 pb-1 flex justify-between items-baseline">
-        <span className="text-[11px] font-semibold tracking-[0.04em] uppercase text-[#6b7280]">
+        <span className="text-[11px] font-semibold tracking-[0.04em] uppercase text-[#8890a0]">
           Circuit
         </span>
         {circuitId && (
@@ -59,13 +59,13 @@ export function TrackMap({ circuitId }: TrackMapProps) {
 
       {!circuitId || unavailable ? (
         <div
-          className="flex items-center justify-center h-[200px] text-[12px] text-[#6b7280]"
+          className="flex items-center justify-center h-[200px] text-[12px] text-[#8890a0]"
           data-testid="track-map-unavailable"
         >
           Track map unavailable for this circuit
         </div>
       ) : !config ? (
-        <div className="flex items-center justify-center h-[200px] text-[12px] text-[#6b7280]">
+        <div className="flex items-center justify-center h-[200px] text-[12px] text-[#8890a0]">
           Loading…
         </div>
       ) : (

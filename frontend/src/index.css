@@ -11,7 +11,10 @@
   --color-border-soft: #2a2f38;
   --color-text-primary: #eef0f3;
   --color-text-secondary: #9aa1ad;
-  --color-text-tertiary: #6b7280;
+  /* AD-12: was #6b7280 (3.4:1–3.7:1 against bg-card/bg-app — fails WCAG AA's
+     4.5:1 minimum for normal text). Darkened to restore contrast; still
+     visually the dimmest of the three text tiers. */
+  --color-text-tertiary: #8890a0;
   --color-text-dim: #4b5160;
   --color-accent-editorial: #d8b65c;
 

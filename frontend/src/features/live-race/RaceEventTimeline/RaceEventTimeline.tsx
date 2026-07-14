@@ -16,7 +16,7 @@ export function RaceEventTimeline() {
   if (timeline.length === 0) {
     return (
       <div
-        className="px-3 py-4 text-[12px] text-[#6b7280] bg-[#20242c] rounded-[8px]"
+        className="px-3 py-4 text-[12px] text-[#8890a0] bg-[#20242c] rounded-[8px]"
         data-testid="race-event-timeline-empty"
       >
         No race events yet

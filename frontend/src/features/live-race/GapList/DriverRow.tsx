@@ -24,7 +24,7 @@ export function DriverRow({ driverId }: DriverRowProps) {
       </span>
     )
   } else if (driver.gapToCarAhead === null) {
-    gapDisplay = <span className="text-[#6b7280]">—</span>
+    gapDisplay = <span className="text-[#8890a0]">—</span>
   } else if (isBattle) {
     gapDisplay = (
       <span className="text-[#d8b65c] font-semibold" data-testid="battle-gap">
@@ -37,7 +37,7 @@ export function DriverRow({ driverId }: DriverRowProps) {
 
   return (
     <div className="flex items-center gap-3 px-[10px] py-[6px] text-[12px] hover:bg-[#20242c] cursor-default font-[Avenir_Next,sans-serif]">
-      <span className="w-5 text-right text-[#6b7280] shrink-0">
+      <span className="w-5 text-right text-[#8890a0] shrink-0">
         {driver.position}
       </span>
       <span
@@ -73,7 +73,7 @@ export function DriverRow({ driverId }: DriverRowProps) {
       {driver.pitWindowActive && <PitWindowIndicator />}
       {driver.championshipDelta != null && (
         <span
-          className="text-[10px] text-[#6b7280] tabular-nums shrink-0"
+          className="text-[10px] text-[#8890a0] tabular-nums shrink-0"
           data-testid="championship-delta"
         >
           {driver.championshipDelta}

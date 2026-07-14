@@ -20,7 +20,7 @@ export function GapList() {
           <span className="text-[11.5px] font-semibold tracking-[0.04em] uppercase text-[#9aa1ad]">
             Race Order
           </span>
-          <span className="text-[9px] text-[#6b7280] tracking-wide">
+          <span className="text-[9px] text-[#8890a0] tracking-wide">
             pts if race ended now
           </span>
         </div>
@@ -40,7 +40,7 @@ export function GapList() {
       </div>
 
       {sortedDriverIds.length === 0 ? (
-        <p className="px-[10px] py-6 text-[12px] text-[#6b7280]">
+        <p className="px-[10px] py-6 text-[12px] text-[#8890a0]">
           Waiting for race data…
         </p>
       ) : (

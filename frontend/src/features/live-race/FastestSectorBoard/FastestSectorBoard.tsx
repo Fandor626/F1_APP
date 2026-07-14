@@ -7,7 +7,7 @@ function SectorCell({ label, entry }: { label: 'S1' | 'S2' | 'S3'; entry: Fastes
       className="flex flex-col items-center gap-1 px-3 py-2 rounded-[8px] bg-[#20242c] min-w-[64px]"
       data-testid={`sector-${label.toLowerCase()}`}
     >
-      <span className="text-[10px] text-[#6b7280] uppercase tracking-wide">{label}</span>
+      <span className="text-[10px] text-[#8890a0] uppercase tracking-wide">{label}</span>
       {entry ? (
         <>
           <span
@@ -19,7 +19,7 @@ function SectorCell({ label, entry }: { label: 'S1' | 'S2' | 'S3'; entry: Fastes
           <span className="text-[11px] text-[#eef0f3]">{entry.driverCode}</span>
         </>
       ) : (
-        <span className="text-[12px] text-[#6b7280]">—</span>
+        <span className="text-[12px] text-[#8890a0]">—</span>
       )}
     </div>
   )

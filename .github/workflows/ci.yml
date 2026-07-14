@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc -b
+      - run: npm test -- --run
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test F1App.Api.Tests/F1App.Api.Tests.csproj
+
+  # AD-12: automated accessibility gate — axe-core assertions against the
+  # five pages named by PRD success metric SM-2, run against the real
+  # frontend + backend (not a mocked API layer). A critical/serious axe
+  # violation on any of the five pages fails the build.
+  accessibility:
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Create frontend env file
+        working-directory: frontend
+        run: cp .env.example .env.local
+
+      - name: Install e2e dependencies
+        working-directory: playwright
+        run: npm install
+      - name: Install Playwright browsers
+        working-directory: playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run accessibility gate
+        working-directory: playwright
+        run: npm test
+        env:
+          CI: 'true'
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright/playwright-report/
+          retention-days: 14

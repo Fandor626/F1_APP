@@ -36,7 +36,7 @@ function App() {
         </Link>
       </nav>
       <Outlet />
-      <footer className="border-t border-[#2a2f38] px-6 py-4 text-[11px] text-[#6b7280]">
+      <footer className="border-t border-[#2a2f38] px-6 py-4 text-[11px] text-[#9aa1ad]">
         Track outlines:{' '}
         <a
           href="https://github.com/f1db/f1db"

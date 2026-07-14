@@ -113,7 +113,7 @@ export function LapTimeChart() {
         <span className="text-[11.5px] font-semibold tracking-[0.04em] uppercase text-[#9aa1ad] block mb-3">
           Lap Times
         </span>
-        <p className="px-[10px] py-6 text-[12px] text-[#6b7280]">
+        <p className="px-[10px] py-6 text-[12px] text-[#8890a0]">
           Waiting for lap data…
         </p>
       </div>
