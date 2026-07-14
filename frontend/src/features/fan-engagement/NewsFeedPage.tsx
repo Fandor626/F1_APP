@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useNewsFeed } from '../../shared/api/news'
+import type { NewsItem } from '../../shared/api/news'
 import { formatSessionTime } from '../../shared/utils/dateUtils'
 
 function NewsFeedSkeleton() {
@@ -11,6 +13,39 @@ function NewsFeedSkeleton() {
         />
       ))}
     </div>
+  )
+}
+
+function NewsCard({ item }: { item: NewsItem }) {
+  const [imageFailed, setImageFailed] = useState(false)
+  const showImage = !!item.imageUrl && !imageFailed
+
+  return (
+    <a
+      href={item.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-testid="news-card"
+      className="flex items-center gap-3.5 rounded-lg border border-border-soft bg-bg-card px-[22px] py-[16px] no-underline hover:border-accent-editorial"
+    >
+      {showImage && (
+        <img
+          src={item.imageUrl}
+          alt=""
+          onError={() => setImageFailed(true)}
+          className="h-[56px] w-[56px] shrink-0 rounded-md object-cover"
+        />
+      )}
+      <div className="min-w-0">
+        <h2 className="mb-1 text-[15px] font-bold tracking-[-0.01em] text-text-primary">{item.title}</h2>
+        {item.snippet && (
+          <p className="mb-1 truncate text-[12.5px] text-text-secondary">{item.snippet}</p>
+        )}
+        <p className="text-[12px] text-text-tertiary">
+          {item.source} · {formatSessionTime(item.publishedAt)}
+        </p>
+      </div>
+    </a>
   )
 }
 
@@ -37,18 +72,7 @@ export function NewsFeedPage() {
         <ul className="flex flex-col gap-3">
           {data.map((item, index) => (
             <li key={`${item.link}-${index}`}>
-              <a
-                href={item.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-testid="news-card"
-                className="block rounded-lg border border-border-soft bg-bg-card px-[22px] py-[16px] no-underline hover:border-accent-editorial"
-              >
-                <h2 className="mb-1.5 text-[15px] font-bold tracking-[-0.01em] text-text-primary">{item.title}</h2>
-                <p className="text-[12px] text-text-tertiary">
-                  {item.source} · {formatSessionTime(item.publishedAt)}
-                </p>
-              </a>
+              <NewsCard item={item} />
             </li>
           ))}
         </ul>

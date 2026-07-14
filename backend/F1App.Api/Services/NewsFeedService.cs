@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.RegularExpressions;
 using F1App.Api.Clients;
 using F1App.Api.Models;
 using Microsoft.Extensions.Caching.Memory;
@@ -11,6 +13,9 @@ public class NewsFeedService(
     ILogger<NewsFeedService> logger)
 {
     private const string CacheKey = "news:feed";
+    private const int SnippetMaxLength = 140;
+
+    private static readonly Regex HtmlTagRegex = new("<.*?>", RegexOptions.Compiled | RegexOptions.Singleline);
 
     // Verified live before implementation — formula1.com's actual feed path
     // differs from epics.md's stale URL (see Story 6.1's Dev Notes).
@@ -38,7 +43,9 @@ public class NewsFeedService(
                     i.Title ?? "(untitled)",
                     i.Link ?? "",
                     name,
-                    i.PublishingDate is { } date ? new DateTimeOffset(date, TimeSpan.Zero) : DateTimeOffset.UtcNow)));
+                    i.PublishingDate is { } date ? new DateTimeOffset(date, TimeSpan.Zero) : DateTimeOffset.UtcNow,
+                    i.ImageUrl,
+                    BuildSnippet(i.Description))));
             }
             catch (Exception ex)
             {
@@ -51,5 +58,26 @@ public class NewsFeedService(
         var sorted = items.OrderByDescending(i => i.PublishedAt).ToList();
         cache.Set(CacheKey, (IReadOnlyList<NewsItem>)sorted, TimeSpan.FromMinutes(refreshMinutes));
         return sorted;
+    }
+
+    // RSS <description> commonly contains HTML markup — strip tags, decode
+    // entities, collapse whitespace, then truncate to a one-line snippet.
+    // Degrades to null (title-only rendering, per FR-18) rather than an
+    // empty string when there's nothing usable.
+    internal static string? BuildSnippet(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description)) return null;
+
+        var stripped = HtmlTagRegex.Replace(description, " ");
+        var decoded = WebUtility.HtmlDecode(stripped);
+        var collapsed = string.Join(' ', decoded.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+        if (collapsed.Length == 0) return null;
+        if (collapsed.Length <= SnippetMaxLength) return collapsed;
+
+        var truncated = collapsed[..SnippetMaxLength];
+        var lastSpace = truncated.LastIndexOf(' ');
+        if (lastSpace > 0) truncated = truncated[..lastSpace];
+        return truncated + "…";
     }
 }

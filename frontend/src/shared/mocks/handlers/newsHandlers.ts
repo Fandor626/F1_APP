@@ -9,6 +9,8 @@ export const sampleNewsFeed: NewsItem[] = [
     link: 'https://www.formula1.com/en/latest/example-1',
     source: 'Formula1.com',
     publishedAt: '2026-07-10T10:00:00Z',
+    imageUrl: 'https://www.formula1.com/en/latest/example-1/thumbnail.jpg',
+    snippet: 'A closer look at how the rookie has closed the gap in recent races.',
   },
   {
     title: 'Alonso has "no idea" what he\'ll do when he eventually retires from F1',

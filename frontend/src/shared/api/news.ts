@@ -7,6 +7,10 @@ const NewsItemSchema = z.object({
   link: z.string(),
   source: z.string(),
   publishedAt: z.string(),
+  // `.optional()`, not required: the backend's global JsonIgnoreCondition.WhenWritingNull
+  // omits these fields entirely when absent rather than sending `null`.
+  imageUrl: z.string().optional(),
+  snippet: z.string().optional(),
 })
 
 const NewsFeedSchema = z.array(NewsItemSchema)

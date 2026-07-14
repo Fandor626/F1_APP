@@ -112,4 +112,74 @@ public class NewsFeedServiceTests
 
         feedReaderClient.Verify(c => c.ReadAsync(It.IsAny<string>()), Times.Exactly(3)); // 3 feeds, once each — not 6
     }
+
+    [Fact]
+    public async Task GetNewsAsync_MapsImageUrlAndBuildsSnippetFromDescription()
+    {
+        var feedReaderClient = new Mock<IFeedReaderClient>();
+        feedReaderClient
+            .Setup(c => c.ReadAsync("https://www.formula1.com/en/latest/all.xml"))
+            .ReturnsAsync([new FeedReaderItem(
+                "F1 headline", "https://f1.com/a", DateTime.UtcNow,
+                "https://f1.com/image.jpg", "<p>A <b>short</b> summary.</p>")]);
+        feedReaderClient
+            .Setup(c => c.ReadAsync("https://www.autosport.com/rss/f1/news"))
+            .ReturnsAsync([]);
+        feedReaderClient
+            .Setup(c => c.ReadAsync("https://www.racefans.net/feed"))
+            .ReturnsAsync([]);
+
+        var service = CreateService(feedReaderClient);
+
+        var news = await service.GetNewsAsync(CancellationToken.None);
+
+        Assert.Equal("https://f1.com/image.jpg", news[0].ImageUrl);
+        Assert.Equal("A short summary.", news[0].Snippet);
+    }
+
+    [Fact]
+    public async Task GetNewsAsync_DegradesToNullImageAndSnippetWhenAbsent()
+    {
+        var feedReaderClient = new Mock<IFeedReaderClient>();
+        feedReaderClient
+            .Setup(c => c.ReadAsync("https://www.formula1.com/en/latest/all.xml"))
+            .ReturnsAsync([new FeedReaderItem("F1 headline", "https://f1.com/a", DateTime.UtcNow)]);
+        feedReaderClient
+            .Setup(c => c.ReadAsync("https://www.autosport.com/rss/f1/news"))
+            .ReturnsAsync([]);
+        feedReaderClient
+            .Setup(c => c.ReadAsync("https://www.racefans.net/feed"))
+            .ReturnsAsync([]);
+
+        var service = CreateService(feedReaderClient);
+
+        var news = await service.GetNewsAsync(CancellationToken.None);
+
+        Assert.Null(news[0].ImageUrl);
+        Assert.Null(news[0].Snippet);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
+    [InlineData("<p>Plain <em>text</em></p>", "Plain text")]
+    [InlineData("Already &amp; plain", "Already & plain")]
+    public void BuildSnippet_StripsHtmlAndDecodesEntities(string? description, string? expected)
+    {
+        Assert.Equal(expected, NewsFeedService.BuildSnippet(description));
+    }
+
+    [Fact]
+    public void BuildSnippet_TruncatesLongDescriptionsAtAWordBoundaryWithEllipsis()
+    {
+        var longText = string.Join(' ', Enumerable.Repeat("word", 40));
+
+        var snippet = NewsFeedService.BuildSnippet(longText);
+
+        Assert.NotNull(snippet);
+        Assert.True(snippet!.Length <= 141); // 140 + the ellipsis character
+        Assert.EndsWith("…", snippet);
+        Assert.DoesNotContain("  ", snippet);
+    }
 }
