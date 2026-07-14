@@ -5,6 +5,7 @@ import { CountryFlag } from '../../shared/components/CountryFlag'
 import { formatSessionTimeForMode } from '../../shared/utils/dateUtils'
 import { ContextualData } from './ContextualData'
 import { TimezoneToggle } from './TimezoneToggle'
+import { TrackOutline } from './TrackOutline'
 import { WinProbabilityWidget } from './WinProbabilityWidget'
 
 function SessionsSkeleton() {
@@ -54,6 +55,17 @@ export function RaceWeekendDetailView() {
           >
             {data.circuitName}
           </Link>
+
+          <div
+            className="mb-7 flex items-center justify-center rounded-lg border border-border-soft bg-bg-inset p-4"
+            data-testid="race-weekend-track-layout"
+          >
+            <TrackOutline
+              circuitId={data.circuitId}
+              circuitName={data.circuitName}
+              className="h-[320px] w-full max-w-[560px] text-text-secondary"
+            />
+          </div>
 
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">

@@ -78,4 +78,30 @@ describe('RaceWeekendDetailView', () => {
       ),
     )
   })
+
+  it('renders a larger track layout panel using the same circuit-configs asset as the calendar card', async () => {
+    server.use(
+      http.get('/circuit-configs/bahrain.json', () =>
+        HttpResponse.json({ circuitId: 'bahrain', viewBox: '0 0 500 500', trackPath: 'M10,10 L90,90 Z' }),
+      ),
+    )
+
+    renderDetail(1)
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('img', { name: 'Track layout: Bahrain International Circuit' }),
+      ).toBeInTheDocument(),
+    )
+  })
+
+  it('omits the track layout gracefully (no broken-image state) when the asset is unavailable', async () => {
+    server.use(http.get('/circuit-configs/bahrain.json', () => new HttpResponse(null, { status: 404 })))
+
+    renderDetail(1)
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Bahrain Grand Prix' })).toBeInTheDocument())
+    expect(screen.getByTestId('race-weekend-track-layout')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('img', { name: /Track layout/ })).not.toBeInTheDocument())
+  })
 })
