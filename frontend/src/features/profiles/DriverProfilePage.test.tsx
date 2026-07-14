@@ -44,6 +44,10 @@ describe('DriverProfilePage', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: sampleDriverProfile!.fullName })).toBeInTheDocument())
 
+    // Career stats render as separate, labeled stacked sections rather than
+    // one flat list — Career Totals, Constructor History, and the chart.
+    expect(screen.getByText('Career Totals')).toBeInTheDocument()
+    expect(screen.getByText('Constructor History')).toBeInTheDocument()
     expect(screen.getByText(sampleDriverProfile!.careerTotals.wins)).toBeInTheDocument()
     expect(screen.getByText(sampleDriverProfile!.careerTotals.titles)).toBeInTheDocument()
     expect(screen.getByRole('table')).toBeInTheDocument()

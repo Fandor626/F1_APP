@@ -50,43 +50,50 @@ export function DriverProfilePage() {
           <h1 className="mb-1 text-[26px] font-bold tracking-[-0.01em] text-text-primary">{data.fullName}</h1>
           <p className="mb-7 text-[13px] text-text-secondary">{data.nationality}</p>
 
-          <section className="mb-7 grid grid-cols-3 gap-3 sm:grid-cols-6">
-            <StatTile label="Races" value={data.careerTotals.races} />
-            <StatTile label="Wins" value={data.careerTotals.wins} />
-            <StatTile label="Podiums" value={data.careerTotals.podiums} />
-            <StatTile label="Poles" value={data.careerTotals.poles} />
-            <StatTile label="Fastest Laps" value={data.careerTotals.fastestLaps} />
-            <StatTile label="Titles" value={data.careerTotals.titles} />
+          <section className="mb-7">
+            <h2 className="mb-3 text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
+              Career Totals
+            </h2>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+              <StatTile label="Races" value={data.careerTotals.races} />
+              <StatTile label="Wins" value={data.careerTotals.wins} />
+              <StatTile label="Podiums" value={data.careerTotals.podiums} />
+              <StatTile label="Poles" value={data.careerTotals.poles} />
+              <StatTile label="Fastest Laps" value={data.careerTotals.fastestLaps} />
+              <StatTile label="Titles" value={data.careerTotals.titles} />
+            </div>
           </section>
 
           <section className="mb-7">
             <h2 className="mb-3 text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
               Constructor History
             </h2>
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr>
-                  <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
-                    Year
-                  </th>
-                  <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
-                    Constructor(s)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.constructorHistory.map((entry) => (
-                  <tr key={entry.season} className="hover:bg-bg-card-hover">
-                    <td className="border-b border-bg-card-hover px-2.5 py-[11px] font-semibold text-text-tertiary">
-                      {entry.season}
-                    </td>
-                    <td className="border-b border-bg-card-hover px-2.5 py-[11px] text-text-primary">
-                      {entry.constructorNames.join(' / ')}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[13px]">
+                <thead>
+                  <tr>
+                    <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
+                      Year
+                    </th>
+                    <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
+                      Constructor(s)
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.constructorHistory.map((entry) => (
+                    <tr key={entry.season} className="hover:bg-bg-card-hover">
+                      <td className="border-b border-bg-card-hover px-2.5 py-[11px] font-semibold text-text-tertiary">
+                        {entry.season}
+                      </td>
+                      <td className="border-b border-bg-card-hover px-2.5 py-[11px] text-text-primary">
+                        {entry.constructorNames.join(' / ')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
 
           <DriverCareerChart points={data.careerPoints} isPending={false} isError={false} />

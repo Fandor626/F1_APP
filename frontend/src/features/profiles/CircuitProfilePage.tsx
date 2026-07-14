@@ -91,36 +91,38 @@ export function CircuitProfilePage() {
             {data.pastWinners.length === 0 ? (
               <p className="text-[13px] text-text-secondary">No past races at this circuit.</p>
             ) : (
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr>
-                    <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
-                      Year
-                    </th>
-                    <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
-                      Driver
-                    </th>
-                    <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
-                      Constructor
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.pastWinners.map((winner) => (
-                    <tr key={winner.season} className="hover:bg-bg-card-hover">
-                      <td className="border-b border-bg-card-hover px-2.5 py-[11px] font-semibold text-text-tertiary">
-                        {winner.season}
-                      </td>
-                      <td className="border-b border-bg-card-hover px-2.5 py-[11px] font-semibold text-text-primary">
-                        {winner.driverName}
-                      </td>
-                      <td className="border-b border-bg-card-hover px-2.5 py-[11px] text-text-secondary">
-                        {winner.constructorName}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr>
+                      <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
+                        Year
+                      </th>
+                      <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
+                        Driver
+                      </th>
+                      <th className="border-b border-border-soft px-2.5 py-2 text-left text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
+                        Constructor
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.pastWinners.map((winner) => (
+                      <tr key={winner.season} className="hover:bg-bg-card-hover">
+                        <td className="border-b border-bg-card-hover px-2.5 py-[11px] font-semibold text-text-tertiary">
+                          {winner.season}
+                        </td>
+                        <td className="border-b border-bg-card-hover px-2.5 py-[11px] font-semibold text-text-primary">
+                          {winner.driverName}
+                        </td>
+                        <td className="border-b border-bg-card-hover px-2.5 py-[11px] text-text-secondary">
+                          {winner.constructorName}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
         </>
