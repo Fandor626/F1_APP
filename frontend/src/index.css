@@ -30,6 +30,12 @@
   --color-team-ferrari: #ef1a2d;
   --color-team-mercedes: #1fd6c1;
   --color-team-mclaren: #ff8a1e;
+  --color-team-astonmartin: #2d9c7c;
+  --color-team-alpine: #ff87bc;
+  --color-team-williams: #64c4ff;
+  --color-team-rb: #6c98ff;
+  --color-team-sauber: #52e252;
+  --color-team-haas: #b6babd;
 
   /* DESIGN.md rounded.lg — the card/panel radius used everywhere except
      the few small interactive elements introduced by later stories. */
