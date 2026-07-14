@@ -8,7 +8,6 @@ import type { CompleteFanCardPicks } from './useFanCardStore'
 
 interface FanCardProps {
   picks: CompleteFanCardPicks
-  onEdit: () => void
 }
 
 function driverInitials(name: string): string {
@@ -17,7 +16,7 @@ function driverInitials(name: string): string {
   return initials.toUpperCase()
 }
 
-export function FanCard({ picks, onEdit }: FanCardProps) {
+export function FanCard({ picks }: FanCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [photoFailed, setPhotoFailed] = useState(false)
@@ -121,13 +120,6 @@ export function FanCard({ picks, onEdit }: FanCardProps) {
           className="rounded-md border border-border-soft px-4 py-2 text-[13px] font-semibold text-text-primary hover:border-accent-editorial hover:text-accent-editorial disabled:opacity-50"
         >
           {isExporting ? 'Exporting…' : 'Download Image'}
-        </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="rounded-md border border-border-soft px-4 py-2 text-[13px] font-semibold text-text-secondary hover:border-accent-editorial hover:text-accent-editorial"
-        >
-          Edit Picks
         </button>
       </div>
     </div>

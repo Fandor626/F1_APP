@@ -12,14 +12,6 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock }
 })
 
-const EMPTY_PICKS = {
-  driverId: null,
-  driverName: null,
-  constructorName: null,
-  circuitId: null,
-  circuitName: null,
-}
-
 const DISMISSED_AT_KEY = 'f1app__fanCardPromptDismissedAt__v1'
 
 function renderModal() {
@@ -36,17 +28,22 @@ function renderModal() {
 beforeEach(() => {
   window.localStorage.clear()
   navigateMock.mockClear()
-  useFanCardStore.setState(EMPTY_PICKS)
+  useFanCardStore.setState({ cards: [] })
 })
 
 describe('FanCardPromptModal', () => {
   it('does not render when the user already has complete fan card picks', () => {
     useFanCardStore.setState({
-      driverId: 'norris',
-      driverName: 'Lando Norris',
-      constructorName: 'McLaren',
-      circuitId: 'bahrain',
-      circuitName: 'Bahrain International Circuit',
+      cards: [
+        {
+          id: 'card-1',
+          driverId: 'norris',
+          driverName: 'Lando Norris',
+          constructorName: 'McLaren',
+          circuitId: 'bahrain',
+          circuitName: 'Bahrain International Circuit',
+        },
+      ],
     })
 
     renderModal()

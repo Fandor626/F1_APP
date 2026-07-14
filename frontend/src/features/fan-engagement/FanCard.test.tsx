@@ -21,7 +21,7 @@ function renderCard(overridePicks: CompleteFanCardPicks = picks) {
   const queryClient = new QueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      <FanCard picks={overridePicks} onEdit={vi.fn()} />
+      <FanCard picks={overridePicks} />
     </QueryClientProvider>,
   )
 }

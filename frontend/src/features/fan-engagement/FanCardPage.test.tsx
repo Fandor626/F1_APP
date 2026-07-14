@@ -21,13 +21,7 @@ function renderPage() {
 
 beforeEach(() => {
   window.localStorage.clear()
-  useFanCardStore.setState({
-    driverId: null,
-    driverName: null,
-    constructorName: null,
-    circuitId: null,
-    circuitName: null,
-  })
+  useFanCardStore.setState({ cards: [] })
 })
 
 async function fillWizardAndSave() {
@@ -52,15 +46,24 @@ async function fillWizardAndSave() {
 }
 
 describe('FanCardPage', () => {
-  it('shows the setup wizard when no picks exist yet', () => {
+  it('shows only the "Add new card" tile as an empty state when there are zero cards', () => {
     renderPage()
 
-    expect(screen.getByText('Set Up Your Fan Card')).toBeInTheDocument()
+    expect(screen.getByTestId('fan-card-add-tile')).toBeInTheDocument()
     expect(screen.queryByTestId('fan-card')).not.toBeInTheDocument()
+  })
+
+  it('opens the wizard when the "Add new card" tile is clicked', () => {
+    renderPage()
+
+    fireEvent.click(screen.getByTestId('fan-card-add-tile'))
+
+    expect(screen.getByText('Set Up Your Fan Card')).toBeInTheDocument()
   })
 
   it('shows the fan card with current stats once picks are saved', async () => {
     renderPage()
+    fireEvent.click(screen.getByTestId('fan-card-add-tile'))
 
     const { driver, constructor } = await fillWizardAndSave()
 
@@ -75,30 +78,44 @@ describe('FanCardPage', () => {
     expect(card).toHaveTextContent('Bahrain International Circuit')
   })
 
-  it('re-opens the wizard with existing picks retained when editing', async () => {
+  it('adds a second card alongside the first without overwriting it', async () => {
     renderPage()
+    fireEvent.click(screen.getByTestId('fan-card-add-tile'))
     await fillWizardAndSave()
-    await waitFor(() => expect(screen.getByTestId('fan-card')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByTestId('fan-card')).toHaveLength(1))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Picks' }))
+    fireEvent.click(screen.getByTestId('fan-card-add-tile'))
+    const driver = sampleDriverStandings[1]
+    const constructor = sampleConstructorStandings[1]
+    await waitFor(() => expect(screen.getByRole('option', { name: driver.driverName })).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Favourite Driver'), { target: { value: driver.driverId } })
+    await waitFor(() => expect(screen.getByRole('option', { name: constructor.constructorName })).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Favourite Constructor'), { target: { value: constructor.constructorName } })
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Jeddah Corniche Circuit' })).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Favourite Circuit'), { target: { value: 'jeddah' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save Fan Card' }))
 
-    expect(screen.getByText('Set Up Your Fan Card')).toBeInTheDocument()
-    expect(screen.getByLabelText('Favourite Driver')).toHaveValue(sampleDriverStandings[0].driverId)
+    await waitFor(() => expect(screen.getAllByTestId('fan-card')).toHaveLength(2))
+    expect(useFanCardStore.getState().cards).toHaveLength(2)
+    expect(useFanCardStore.getState().cards[0].driverId).toBe(sampleDriverStandings[0].driverId)
+    expect(useFanCardStore.getState().cards[1].driverId).toBe(driver.driverId)
   })
 
-  it('persists picks under the versioned localStorage key', async () => {
+  it('persists cards under the versioned localStorage key', async () => {
     renderPage()
+    fireEvent.click(screen.getByTestId('fan-card-add-tile'))
     await fillWizardAndSave()
     await waitFor(() => expect(screen.getByTestId('fan-card')).toBeInTheDocument())
 
     const raw = window.localStorage.getItem('f1app__fanCard__v1')
     expect(raw).toBeTruthy()
     const parsed = JSON.parse(raw!)
-    expect(parsed.state.driverId).toBe(sampleDriverStandings[0].driverId)
+    expect(parsed.state.cards[0].driverId).toBe(sampleDriverStandings[0].driverId)
   })
 
   it('exports the card as a PNG when the download button is clicked', async () => {
     renderPage()
+    fireEvent.click(screen.getByTestId('fan-card-add-tile'))
     await fillWizardAndSave()
     await waitFor(() => expect(screen.getByTestId('fan-card')).toBeInTheDocument())
 

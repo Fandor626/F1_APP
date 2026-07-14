@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { FanCard } from './FanCard'
 import { FanCardWizard } from './FanCardWizard'
-import { hasFanCardPicks, useFanCardStore } from './useFanCardStore'
+import { useFanCardStore } from './useFanCardStore'
 
 export function FanCardPage() {
-  const picks = useFanCardStore((s) => s)
-  const [isEditing, setIsEditing] = useState(false)
-
-  const showWizard = isEditing || !hasFanCardPicks(picks)
+  const cards = useFanCardStore((s) => s.cards)
+  const [isAdding, setIsAdding] = useState(false)
 
   return (
     <div className="mx-auto max-w-[1100px] px-7 py-8 pb-16">
@@ -16,10 +14,26 @@ export function FanCardPage() {
         Pick your favourite driver, constructor, and circuit to build your fan card.
       </p>
 
-      {showWizard ? (
-        <FanCardWizard onDone={() => setIsEditing(false)} />
+      {isAdding ? (
+        <FanCardWizard onDone={() => setIsAdding(false)} />
       ) : (
-        hasFanCardPicks(picks) && <FanCard picks={picks} onEdit={() => setIsEditing(true)} />
+        <div
+          data-testid="fan-card-grid"
+          className="grid max-w-[920px] gap-[22px]"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(226px, 1fr))' }}
+        >
+          {cards.map((card) => (
+            <FanCard key={card.id} picks={card} />
+          ))}
+          <button
+            type="button"
+            onClick={() => setIsAdding(true)}
+            data-testid="fan-card-add-tile"
+            className="flex aspect-[5/7] w-[226px] items-center justify-center rounded-lg border border-dashed border-border-soft text-[13px] font-semibold text-text-secondary hover:border-accent-editorial hover:text-accent-editorial"
+          >
+            + Add new card
+          </button>
+        </div>
       )}
     </div>
   )

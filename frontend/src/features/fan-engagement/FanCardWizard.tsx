@@ -21,14 +21,11 @@ export function FanCardWizard({ onDone }: FanCardWizardProps) {
     })
   }, [schedule])
 
-  const currentPicks = useFanCardStore((s) => s)
-  const setDriverPick = useFanCardStore((s) => s.setDriverPick)
-  const setConstructorPick = useFanCardStore((s) => s.setConstructorPick)
-  const setCircuitPick = useFanCardStore((s) => s.setCircuitPick)
+  const addCard = useFanCardStore((s) => s.addCard)
 
-  const [driverId, setDriverId] = useState(currentPicks.driverId ?? '')
-  const [constructorName, setConstructorName] = useState(currentPicks.constructorName ?? '')
-  const [circuitId, setCircuitId] = useState(currentPicks.circuitId ?? '')
+  const [driverId, setDriverId] = useState('')
+  const [constructorName, setConstructorName] = useState('')
+  const [circuitId, setCircuitId] = useState('')
 
   const canSave = !!driverId && !!constructorName && !!circuitId
 
@@ -37,9 +34,13 @@ export function FanCardWizard({ onDone }: FanCardWizardProps) {
     const circuit = circuits.find((c) => c.circuitId === circuitId)
     if (!driver || !circuit) return
 
-    setDriverPick(driver.driverId, driver.driverName)
-    setConstructorPick(constructorName)
-    setCircuitPick(circuit.circuitId, circuit.circuitName)
+    addCard({
+      driverId: driver.driverId,
+      driverName: driver.driverName,
+      constructorName,
+      circuitId: circuit.circuitId,
+      circuitName: circuit.circuitName,
+    })
     onDone()
   }
 

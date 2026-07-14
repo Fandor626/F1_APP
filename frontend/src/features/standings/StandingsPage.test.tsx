@@ -39,13 +39,7 @@ function renderPage() {
 
 beforeEach(() => {
   window.localStorage.clear()
-  useFanCardStore.setState({
-    driverId: null,
-    driverName: null,
-    constructorName: null,
-    circuitId: null,
-    circuitName: null,
-  })
+  useFanCardStore.setState({ cards: [] })
 })
 
 describe('StandingsPage', () => {

@@ -17,33 +17,14 @@ export interface CompleteFanCardPicks {
   circuitName: string
 }
 
-interface FanCardState extends FanCardPicks {
-  setDriverPick: (driverId: string, driverName: string) => void
-  setConstructorPick: (constructorName: string) => void
-  setCircuitPick: (circuitId: string, circuitName: string) => void
-  resetFanCard: () => void
+export interface FanCardEntry extends CompleteFanCardPicks {
+  id: string
 }
 
-const EMPTY_PICKS: FanCardPicks = {
-  driverId: null,
-  driverName: null,
-  constructorName: null,
-  circuitId: null,
-  circuitName: null,
+interface FanCardState {
+  cards: FanCardEntry[]
+  addCard: (picks: CompleteFanCardPicks) => void
 }
-
-export const useFanCardStore = create<FanCardState>()(
-  persist(
-    (set) => ({
-      ...EMPTY_PICKS,
-      setDriverPick: (driverId, driverName) => set({ driverId, driverName }),
-      setConstructorPick: (constructorName) => set({ constructorName }),
-      setCircuitPick: (circuitId, circuitName) => set({ circuitId, circuitName }),
-      resetFanCard: () => set(EMPTY_PICKS),
-    }),
-    { name: 'f1app__fanCard__v1' },
-  ),
-)
 
 export function hasFanCardPicks(picks: FanCardPicks): picks is CompleteFanCardPicks {
   return (
@@ -54,3 +35,27 @@ export function hasFanCardPicks(picks: FanCardPicks): picks is CompleteFanCardPi
     picks.circuitName !== null
   )
 }
+
+export const useFanCardStore = create<FanCardState>()(
+  persist(
+    (set) => ({
+      cards: [],
+      addCard: (picks) => set((state) => ({ cards: [...state.cards, { ...picks, id: crypto.randomUUID() }] })),
+    }),
+    {
+      name: 'f1app__fanCard__v1',
+      version: 1,
+      // AD-9: the pre-9.3 store persisted a single flat FanCardPicks object
+      // (implicit version 0) under this same key. Wrap it into the new
+      // { cards: [] } collection shape rather than renaming the key — an
+      // existing user's card becomes their first card, never dropped.
+      migrate: (persistedState, version) => {
+        if (version === 0) {
+          const old = persistedState as FanCardPicks
+          return { cards: hasFanCardPicks(old) ? [{ ...old, id: crypto.randomUUID() }] : [] }
+        }
+        return persistedState as FanCardState
+      },
+    },
+  ),
+)

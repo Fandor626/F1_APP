@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Modal } from '../../shared/components/Modal'
 import { useLocalStorage } from '../../shared/hooks/useLocalStorage'
 import { FanCardWizard } from './FanCardWizard'
-import { hasFanCardPicks, useFanCardStore } from './useFanCardStore'
+import { useFanCardStore } from './useFanCardStore'
 
 // Not pinned by any Acceptance Criterion — a dev-time constant (Architecture
 // AD-13 deferred-item note). Easily changed later with no structural impact.
@@ -16,7 +16,7 @@ const DISMISSED_AT_KEY = 'f1app__fanCardPromptDismissedAt__v1'
 // just mounts this with no props.
 export function FanCardPromptModal() {
   const navigate = useNavigate()
-  const picks = useFanCardStore((s) => s)
+  const cards = useFanCardStore((s) => s.cards)
   const [dismissedAt, setDismissedAt] = useLocalStorage<number | null>(DISMISSED_AT_KEY, null)
   const [mode, setMode] = useState<'prompt' | 'wizard'>('prompt')
 
@@ -27,7 +27,7 @@ export function FanCardPromptModal() {
   // time StandingsPage (and this modal with it) mounts.
   const [mountedAt] = useState(() => Date.now())
   const suppressed = dismissedAt !== null && mountedAt - dismissedAt < PROMPT_SUPPRESSION_MS
-  const isOpen = !hasFanCardPicks(picks) && !suppressed
+  const isOpen = cards.length === 0 && !suppressed
 
   // Shared by "Not now", Escape, and backdrop click — Modal exposes one
   // onClose, so every way of closing counts as a dismissal (AC 6). Resets
@@ -39,9 +39,9 @@ export function FanCardPromptModal() {
   }
 
   // No dismissal timestamp is written here — completing the wizard persists
-  // picks via FanCardWizard's own onDone→handleSave, which flips
-  // hasFanCardPicks to true and makes `isOpen` false on the next render
-  // (AC 4 already covers this), closing the modal without extra state here.
+  // a new card via FanCardWizard's own onDone→handleSave, which makes
+  // `cards.length` > 0 and `isOpen` false on the next render (AC 4 already
+  // covers this), closing the modal without extra state here.
   function handleWizardDone() {
     navigate('/fan-card')
   }
