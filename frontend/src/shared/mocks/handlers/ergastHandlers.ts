@@ -138,6 +138,12 @@ export const sampleRaceDetailsByRound: Record<number, RaceWeekendDetail> = {
     championshipDelta: { leaderName: 'Lando Norris', runnerUpName: 'Max Verstappen', pointsGap: 23 },
     allTimeLapRecord: { driverId: 'hamilton', driverName: 'Lewis Hamilton', constructorName: 'Mercedes', time: '1:31.447', season: 2019 },
     recentLapRecord: { driverId: 'norris', driverName: 'Lando Norris', constructorName: 'McLaren', time: '1:32.608', season: 2026 },
+    firstF1Season: 2004,
+    stats: { lengthKm: 5.412, corners: 15, drsZones: 3 },
+    pastWinners: [
+      { season: 2025, driverId: 'norris', driverName: 'Lando Norris', constructorName: 'McLaren' },
+      { season: 2024, driverId: 'max_verstappen', driverName: 'Max Verstappen', constructorName: 'Red Bull Racing' },
+    ],
   },
   2: {
     season: 2026,
@@ -165,8 +171,8 @@ export const sampleCircuitProfile: CircuitProfile = {
   firstF1Season: 1950,
   lapRecord: { driverId: 'hamilton', driverName: 'Lewis Hamilton', constructorName: 'Mercedes', time: '1:21.046', season: 2020 },
   pastWinners: [
-    { season: 2025, driverName: 'Lando Norris', constructorName: 'McLaren' },
-    { season: 2024, driverName: 'Charles Leclerc', constructorName: 'Ferrari' },
+    { season: 2025, driverId: 'norris', driverName: 'Lando Norris', constructorName: 'McLaren' },
+    { season: 2024, driverId: 'leclerc', driverName: 'Charles Leclerc', constructorName: 'Ferrari' },
   ],
   stats: { lengthKm: 5.793, corners: 11, drsZones: 2 },
 }

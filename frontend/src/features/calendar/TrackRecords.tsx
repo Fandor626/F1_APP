@@ -32,7 +32,7 @@ export function TrackRecords({ allTimeLapRecord, recentLapRecord }: TrackRecords
   if (!allTimeLapRecord && !recentLapRecord) return null
 
   return (
-    <div className="mb-7">
+    <div className="mb-7" data-testid="track-records">
       <h2 className="mb-3 text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
         Track Records
       </h2>

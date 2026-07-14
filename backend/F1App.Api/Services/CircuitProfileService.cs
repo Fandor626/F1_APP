@@ -45,7 +45,8 @@ public class CircuitProfileService(IErgastClient ergastClient, IMemoryCache cach
             .Where(x => x.Winner is not null)
             .Select(x => new CircuitWinner(
                 int.Parse(x.Race.Season, CultureInfo.InvariantCulture),
-                $"{x.Winner!.Driver.GivenName} {x.Winner.Driver.FamilyName}",
+                x.Winner!.Driver.DriverId,
+                $"{x.Winner.Driver.GivenName} {x.Winner.Driver.FamilyName}",
                 x.Winner.Constructor.Name))
             .OrderByDescending(w => w.Season)
             .ToList();

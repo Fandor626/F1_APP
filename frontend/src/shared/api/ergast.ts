@@ -134,6 +134,19 @@ const ChampionshipDeltaSchema = z.object({
   pointsGap: z.number(),
 })
 
+const CircuitWinnerSchema = z.object({
+  season: z.number(),
+  driverId: z.string(),
+  driverName: z.string(),
+  constructorName: z.string(),
+})
+
+const CircuitStatsSchema = z.object({
+  lengthKm: z.number(),
+  corners: z.number(),
+  drsZones: z.number(),
+})
+
 const RaceWeekendDetailSchema = z.object({
   season: z.number(),
   round: z.number(),
@@ -148,12 +161,17 @@ const RaceWeekendDetailSchema = z.object({
   // JsonIgnoreCondition.WhenWritingNull omits null fields entirely.
   allTimeLapRecord: LapRecordSchema.nullable().optional(),
   recentLapRecord: LapRecordSchema.nullable().optional(),
+  firstF1Season: z.number().nullable().optional(),
+  pastWinners: z.array(CircuitWinnerSchema).optional(),
+  stats: CircuitStatsSchema.nullable().optional(),
 })
 
 export type Session = z.infer<typeof SessionSchema>
 export type PriorYearWinner = z.infer<typeof PriorYearWinnerSchema>
 export type ChampionshipDelta = z.infer<typeof ChampionshipDeltaSchema>
 export type LapRecord = z.infer<typeof LapRecordSchema>
+export type CircuitWinner = z.infer<typeof CircuitWinnerSchema>
+export type CircuitStats = z.infer<typeof CircuitStatsSchema>
 export type RaceWeekendDetail = z.infer<typeof RaceWeekendDetailSchema>
 
 const WinProbabilityEntrySchema = z.object({
@@ -285,18 +303,6 @@ export function useWinProbability(round: number) {
     retry: false,
   })
 }
-
-const CircuitWinnerSchema = z.object({
-  season: z.number(),
-  driverName: z.string(),
-  constructorName: z.string(),
-})
-
-const CircuitStatsSchema = z.object({
-  lengthKm: z.number(),
-  corners: z.number(),
-  drsZones: z.number(),
-})
 
 const CircuitProfileSchema = z.object({
   circuitId: z.string(),

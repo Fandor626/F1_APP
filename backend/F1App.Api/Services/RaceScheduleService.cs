@@ -239,7 +239,10 @@ public class RaceScheduleService(
             priorYearWinner,
             championshipDelta,
             circuitProfile?.LapRecord,
-            circuitProfile?.RecentLapRecord);
+            circuitProfile?.RecentLapRecord,
+            circuitProfile is null ? null : circuitProfile.FirstF1Season,
+            circuitProfile?.PastWinners ?? [],
+            circuitProfile?.Stats);
 
     // Collecting whichever sessions Ergast actually published for this race and
     // sorting chronologically — rather than branching on weekend type — gives the

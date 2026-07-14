@@ -64,6 +64,7 @@ public class CircuitProfileServiceTests
         Assert.Equal(2023, profile!.FirstF1Season);
         Assert.Equal(2, profile.PastWinners.Count);
         Assert.Equal(2024, profile.PastWinners[0].Season); // most recent first
+        Assert.Equal("norris", profile.PastWinners[0].DriverId);
         Assert.NotNull(profile.LapRecord);
         Assert.Equal("Given Norris", profile.LapRecord!.DriverName);
         Assert.Equal("1:26.720", profile.LapRecord.Time);

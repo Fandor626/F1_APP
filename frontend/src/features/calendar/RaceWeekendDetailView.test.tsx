@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HttpResponse, http } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -109,10 +109,11 @@ describe('RaceWeekendDetailView', () => {
     renderDetail(1)
 
     await waitFor(() => expect(screen.getByText('Track Records')).toBeInTheDocument())
-    expect(screen.getByRole('link', { name: 'Lewis Hamilton' })).toHaveAttribute('href', '/drivers/hamilton')
-    expect(screen.getByRole('link', { name: 'Lando Norris' })).toHaveAttribute('href', '/drivers/norris')
-    expect(screen.getByText('1:31.447')).toBeInTheDocument()
-    expect(screen.getByText('1:32.608')).toBeInTheDocument()
+    const trackRecords = within(screen.getByTestId('track-records'))
+    expect(trackRecords.getByRole('link', { name: 'Lewis Hamilton' })).toHaveAttribute('href', '/drivers/hamilton')
+    expect(trackRecords.getByRole('link', { name: 'Lando Norris' })).toHaveAttribute('href', '/drivers/norris')
+    expect(trackRecords.getByText('1:31.447')).toBeInTheDocument()
+    expect(trackRecords.getByText('1:32.608')).toBeInTheDocument()
   })
 
   it('omits the Track Records section rather than an error when a weekend has no lap record data', async () => {
@@ -120,5 +121,25 @@ describe('RaceWeekendDetailView', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Saudi Arabian Grand Prix' })).toBeInTheDocument())
     expect(screen.queryByText('Track Records')).not.toBeInTheDocument()
+  })
+
+  it('shows the Circuit History section with stat tiles and past winners linking to driver profiles', async () => {
+    renderDetail(1)
+
+    await waitFor(() => expect(screen.getByText('Circuit History')).toBeInTheDocument())
+    expect(screen.getByText('5.412 km')).toBeInTheDocument()
+    expect(screen.getByText('15')).toBeInTheDocument()
+    expect(screen.getByText('2004')).toBeInTheDocument()
+
+    // "Max Verstappen" also appears as plain text in the Championship Gap
+    // section — the link role scopes this to the past-winners table.
+    expect(screen.getByRole('link', { name: 'Max Verstappen' })).toHaveAttribute('href', '/drivers/max_verstappen')
+  })
+
+  it('omits the Circuit History section rather than an error when a weekend has no historical data', async () => {
+    renderDetail(2)
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Saudi Arabian Grand Prix' })).toBeInTheDocument())
+    expect(screen.queryByText('Circuit History')).not.toBeInTheDocument()
   })
 })

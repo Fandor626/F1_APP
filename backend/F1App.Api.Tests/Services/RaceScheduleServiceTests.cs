@@ -310,6 +310,44 @@ public class RaceScheduleServiceTests
     }
 
     [Fact]
+    public async Task GetRaceDetailAsync_PopulatesCircuitHistoryFromCircuitProfile()
+    {
+        var ergastClient = new Mock<IErgastClient>();
+        ergastClient
+            .Setup(c => c.GetCurrentSeasonScheduleAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastRaceTableDto("2026", new[] { Race("1", "2026-03-08") }));
+        ergastClient
+            .Setup(c => c.GetCircuitResultsAsync(2025, "circuit", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        ergastClient
+            .Setup(c => c.GetCircuitInfoAsync("circuit", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ErgastCircuitDto("circuit", "Circuit Name", new ErgastLocationDto("City", "Country")));
+        ergastClient
+            .Setup(c => c.GetAllCircuitResultsAsync("circuit", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                new ErgastRaceResultRaceDto("Grand Prix", "1", "2024-01-01", [
+                    Result("norris", "McLaren", "1"),
+                ], "2024"),
+            });
+
+        var circuitProfileService = new CircuitProfileService(ergastClient.Object, new MemoryCache(new MemoryCacheOptions()));
+        var service = BuildService(ergastClient.Object, EmptyStandingsService(), circuitProfileService);
+
+        var detail = await service.GetRaceDetailAsync(1, CancellationToken.None);
+
+        Assert.NotNull(detail);
+        Assert.Equal(2024, detail!.FirstF1Season);
+        Assert.Single(detail.PastWinners);
+        Assert.Equal("norris", detail.PastWinners[0].DriverId);
+        Assert.Equal("Given norris", detail.PastWinners[0].DriverName);
+        // "circuit" isn't a real circuitId in CircuitStaticFacts, so Stats is
+        // legitimately null here — exercises the "shows whatever data exists"
+        // partial-data path (AC 3) rather than an error.
+        Assert.Null(detail.Stats);
+    }
+
+    [Fact]
     public async Task GetRaceDetailAsync_PriorYearWinnerPresent_MapsDriverConstructorAndTime()
     {
         var ergastClient = new Mock<IErgastClient>();

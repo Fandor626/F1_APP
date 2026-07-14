@@ -11,4 +11,7 @@ public record RaceWeekendDetail(
     CircuitPriorWinner? PriorYearWinner,
     ChampionshipDelta? ChampionshipDelta,
     LapRecord? AllTimeLapRecord,
-    LapRecord? RecentLapRecord);
+    LapRecord? RecentLapRecord,
+    int? FirstF1Season,
+    IReadOnlyList<CircuitWinner> PastWinners,
+    CircuitStats? Stats);

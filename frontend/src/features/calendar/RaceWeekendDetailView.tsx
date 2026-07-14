@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useRaceDetail, useWinProbability } from '../../shared/api/ergast'
 import { CountryFlag } from '../../shared/components/CountryFlag'
 import { formatSessionTimeForMode } from '../../shared/utils/dateUtils'
+import { CircuitHistory } from './CircuitHistory'
 import { ContextualData } from './ContextualData'
 import { TimezoneToggle } from './TimezoneToggle'
 import { TrackOutline } from './TrackOutline'
@@ -69,6 +70,8 @@ export function RaceWeekendDetailView() {
           </div>
 
           <TrackRecords allTimeLapRecord={data.allTimeLapRecord} recentLapRecord={data.recentLapRecord} />
+
+          <CircuitHistory firstF1Season={data.firstF1Season} stats={data.stats} pastWinners={data.pastWinners} />
 
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[11.5px] font-semibold tracking-[0.04em] text-text-tertiary uppercase">
