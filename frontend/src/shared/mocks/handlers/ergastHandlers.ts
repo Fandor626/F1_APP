@@ -136,6 +136,8 @@ export const sampleRaceDetailsByRound: Record<number, RaceWeekendDetail> = {
     ],
     priorYearWinner: { driverName: 'Oscar Piastri', constructorName: 'McLaren', time: '1:35:39.435' },
     championshipDelta: { leaderName: 'Lando Norris', runnerUpName: 'Max Verstappen', pointsGap: 23 },
+    allTimeLapRecord: { driverId: 'hamilton', driverName: 'Lewis Hamilton', constructorName: 'Mercedes', time: '1:31.447', season: 2019 },
+    recentLapRecord: { driverId: 'norris', driverName: 'Lando Norris', constructorName: 'McLaren', time: '1:32.608', season: 2026 },
   },
   2: {
     season: 2026,
@@ -161,7 +163,7 @@ export const sampleCircuitProfile: CircuitProfile = {
   locality: 'Monza',
   country: 'Italy',
   firstF1Season: 1950,
-  lapRecord: { driverName: 'Lewis Hamilton', constructorName: 'Mercedes', time: '1:21.046', season: 2020 },
+  lapRecord: { driverId: 'hamilton', driverName: 'Lewis Hamilton', constructorName: 'Mercedes', time: '1:21.046', season: 2020 },
   pastWinners: [
     { season: 2025, driverName: 'Lando Norris', constructorName: 'McLaren' },
     { season: 2024, driverName: 'Charles Leclerc', constructorName: 'Ferrari' },

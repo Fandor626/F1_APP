@@ -1,6 +1,6 @@
 namespace F1App.Api.Models;
 
-public record LapRecord(string DriverName, string ConstructorName, string Time, int Season);
+public record LapRecord(string DriverId, string DriverName, string ConstructorName, string Time, int Season);
 
 public record CircuitWinner(int Season, string DriverName, string ConstructorName);
 

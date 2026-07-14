@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { queryKeys } from './queryKeys'
 
 const LapRecordSchema = z.object({
+  driverId: z.string(),
   driverName: z.string(),
   constructorName: z.string(),
   time: z.string(),
@@ -143,11 +144,16 @@ const RaceWeekendDetailSchema = z.object({
   sessions: z.array(SessionSchema),
   priorYearWinner: PriorYearWinnerSchema.optional(),
   championshipDelta: ChampionshipDeltaSchema.optional(),
+  // `.nullable().optional()`, matching RaceWeekendSchema: the backend's global
+  // JsonIgnoreCondition.WhenWritingNull omits null fields entirely.
+  allTimeLapRecord: LapRecordSchema.nullable().optional(),
+  recentLapRecord: LapRecordSchema.nullable().optional(),
 })
 
 export type Session = z.infer<typeof SessionSchema>
 export type PriorYearWinner = z.infer<typeof PriorYearWinnerSchema>
 export type ChampionshipDelta = z.infer<typeof ChampionshipDeltaSchema>
+export type LapRecord = z.infer<typeof LapRecordSchema>
 export type RaceWeekendDetail = z.infer<typeof RaceWeekendDetailSchema>
 
 const WinProbabilityEntrySchema = z.object({

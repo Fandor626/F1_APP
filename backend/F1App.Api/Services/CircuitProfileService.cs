@@ -75,7 +75,7 @@ public class CircuitProfileService(IErgastClient ergastClient, IMemoryCache cach
                 if (seconds < bestSeconds)
                 {
                     bestSeconds = seconds;
-                    best = new LapRecord($"{result.Driver.GivenName} {result.Driver.FamilyName}", result.Constructor.Name, timeText, season);
+                    best = new LapRecord(result.Driver.DriverId, $"{result.Driver.GivenName} {result.Driver.FamilyName}", result.Constructor.Name, timeText, season);
                 }
             }
         }

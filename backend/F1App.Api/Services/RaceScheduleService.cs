@@ -145,8 +145,9 @@ public class RaceScheduleService(
 
         var priorYearWinner = await GetPriorYearWinnerAsync(race, cancellationToken);
         var championshipDelta = await GetChampionshipDeltaAsync(cancellationToken);
+        var circuitProfile = await GetCircuitProfileSafeAsync(race.Circuit.CircuitId, cancellationToken);
 
-        return ToDetail(race, priorYearWinner, championshipDelta);
+        return ToDetail(race, priorYearWinner, championshipDelta, circuitProfile);
     }
 
     // Cached per (season, circuitId) rather than per round — round numbers can
@@ -222,7 +223,11 @@ public class RaceScheduleService(
             profile?.RecentLapRecord);
     }
 
-    private static RaceWeekendDetail ToDetail(ErgastRaceDto race, CircuitPriorWinner? priorYearWinner, ChampionshipDelta? championshipDelta) =>
+    private static RaceWeekendDetail ToDetail(
+        ErgastRaceDto race,
+        CircuitPriorWinner? priorYearWinner,
+        ChampionshipDelta? championshipDelta,
+        CircuitProfile? circuitProfile) =>
         new(
             int.Parse(race.Season, CultureInfo.InvariantCulture),
             int.Parse(race.Round, CultureInfo.InvariantCulture),
@@ -232,7 +237,9 @@ public class RaceScheduleService(
             race.Circuit.Location.Country,
             BuildSessions(race),
             priorYearWinner,
-            championshipDelta);
+            championshipDelta,
+            circuitProfile?.LapRecord,
+            circuitProfile?.RecentLapRecord);
 
     // Collecting whichever sessions Ergast actually published for this race and
     // sorting chronologically — rather than branching on weekend type — gives the

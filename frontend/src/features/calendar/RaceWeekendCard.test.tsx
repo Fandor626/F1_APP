@@ -15,8 +15,8 @@ const race: RaceWeekend = {
   country: 'Italy',
   weekendStart: '2026-09-05T10:30:00+00:00',
   raceStart: '2026-09-07T13:00:00+00:00',
-  allTimeLapRecord: { driverName: 'Rubens Barrichello', constructorName: 'Ferrari', time: '1:21.046', season: 2004 },
-  recentLapRecord: { driverName: 'Lando Norris', constructorName: 'McLaren', time: '1:22.708', season: 2025 },
+  allTimeLapRecord: { driverId: 'barrichello', driverName: 'Rubens Barrichello', constructorName: 'Ferrari', time: '1:21.046', season: 2004 },
+  recentLapRecord: { driverId: 'norris', driverName: 'Lando Norris', constructorName: 'McLaren', time: '1:22.708', season: 2025 },
 }
 
 const raceWithoutLapData: RaceWeekend = {

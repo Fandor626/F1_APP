@@ -104,4 +104,21 @@ describe('RaceWeekendDetailView', () => {
     expect(screen.getByTestId('race-weekend-track-layout')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('img', { name: /Track layout/ })).not.toBeInTheDocument())
   })
+
+  it('shows the Track Records section with both lap records linking to driver profiles', async () => {
+    renderDetail(1)
+
+    await waitFor(() => expect(screen.getByText('Track Records')).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'Lewis Hamilton' })).toHaveAttribute('href', '/drivers/hamilton')
+    expect(screen.getByRole('link', { name: 'Lando Norris' })).toHaveAttribute('href', '/drivers/norris')
+    expect(screen.getByText('1:31.447')).toBeInTheDocument()
+    expect(screen.getByText('1:32.608')).toBeInTheDocument()
+  })
+
+  it('omits the Track Records section rather than an error when a weekend has no lap record data', async () => {
+    renderDetail(2)
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Saudi Arabian Grand Prix' })).toBeInTheDocument())
+    expect(screen.queryByText('Track Records')).not.toBeInTheDocument()
+  })
 })

@@ -9,4 +9,6 @@ public record RaceWeekendDetail(
     string Country,
     IReadOnlyList<Session> Sessions,
     CircuitPriorWinner? PriorYearWinner,
-    ChampionshipDelta? ChampionshipDelta);
+    ChampionshipDelta? ChampionshipDelta,
+    LapRecord? AllTimeLapRecord,
+    LapRecord? RecentLapRecord);
